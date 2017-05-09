@@ -1,0 +1,428 @@
+---
+title: "Discrete Time & Continious Time Event History Analysis"
+author: "Sergej Kaiser"
+date: "3/05/2017"
+output:
+  html_document: default
+  html_notebook: default
+css: markdown7.css
+---
+The document shows some of the visualizations, which I created for the course 'Event history analysis'. 
+The focus of event history anlysis is to predict the time-to-event outcomes, such as e.g. birth of a child. <br>
+The first visualizations show the discrete time analysis of the chance of a third birth. The continious time analysis is about general mortality risk.
+```{r setup, echo=FALSE, message=FALSE, warning=FALSE}
+setwd("/Users/sergej/blog")
+library(knitr)
+library(tidyverse)
+library(lazyeval)
+library(forcats)
+library(htmlTable)
+library(texreg)
+library(gridExtra)
+library(grid)
+if ("package:knitr" %in% search()){
+  # Set some basic options. You usually do not
+  # want your code, messages, warnings etc
+  # to show in your actual manuscript
+  opts_chunk$set(warning=FALSE, 
+                 message=FALSE, 
+                 echo=FALSE, 
+                 dpi=96,
+                 fig.width=12, fig.height=8, # Default figure widths
+                 dev="png", dev.args=list(type="cairo"), # The png device
+                 # Change to dev="postscript" if you want the EPS-files
+                 # for submitting. Also remove the dev.args() as the postscript
+                 # doesn't accept the type="cairo" argument.
+                 error=FALSE)
+  
+ 
+}
+```
+```{r data}
+library(readr)
+third.birth <-readr::read_rds("event_hist_data_part1.rds")
+mort.data <- readr::read_rds('event_data_part2.rds')
+```
+
+```{r functions}
+my.ggplot.hazard<-function(df,x,y,z=NULL,major.breaks=c(seq(0.00,0.10,0.02)),minor.breaks=c(seq(0.01,0.1,0.02)),title.str="Plot of third birth Hazard",legend.pos="none",pal.str="Dark2",ylab="Hazard"){
+  if(is.null(z))
+    {
+    ggplot(df, aes_string(x, y)) + geom_line() +  theme_bw()+
+      #coord_cartesian(ylim=ylimits)+
+    labs(y=ylab,x="Years since second birth",title=title.str)+
+      scale_y_continuous(breaks=major.breaks,minor_breaks = minor.breaks)+ 
+      scale_x_continuous(breaks=c(seq(0,20,2)),minor_breaks = c(seq(1,20,2))) + 
+      theme_minimal() +
+        theme(
+              panel.grid.major.x = element_blank(),
+              panel.grid.minor = element_blank(),
+              legend.title = element_blank(),
+              legend.justification = c(0, 1), 
+              legend.position = "bottom",
+              legend.background = element_blank(),
+              legend.direction="horizontal",
+              text = element_text(size=14,family = "Georgia"),
+              plot.title = element_text(hjust=0.5,vjust=0.5,size = 20, margin = margin(b = 10)),
+              plot.subtitle = element_text(size = 14, color = "darkslategrey", margin = margin(b = 25)),
+              plot.caption = element_text(size = 11, margin = margin(t = 10), color = "grey70", hjust = 0))
+    }
+  else{
+    ggplot(df, aes_string(x, y,color=z)) + 
+      geom_line() +  theme_bw()+
+      #coord_cartesian(ylim=ylimits)+
+      scale_color_brewer(palette = pal.str)+
+    labs(y=ylab,x="Years since second birth",title=title.str)+
+      scale_y_continuous(breaks=major.breaks,minor_breaks = minor.breaks)+ 
+      scale_x_continuous(breaks=c(seq(0,20,2)),minor_breaks = c(seq(1,20,2)))+
+    theme_minimal() +
+        theme(
+              panel.grid.major.x = element_blank(),
+              panel.grid.minor = element_blank(),
+              legend.title = element_blank(),
+              legend.justification = c(0, 1), 
+              legend.position = "bottom",
+              legend.background = element_blank(),
+              legend.direction="horizontal",
+              text = element_text(size=14,family = "Georgia"),
+              plot.title = element_text(hjust=0.5,vjust=0.5,size = 20, margin = margin(b = 10)),
+              plot.subtitle = element_text(size = 14, color = "darkslategrey", margin = margin(b = 25)),
+              plot.caption = element_text(size = 11, margin = margin(t = 10), color = "grey70", hjust = 0)
+              )
+    }}
+theme_geom_line<-theme_geom_line<-function(pal.str,title.str,major.breaks,minor.breaks,ylab,legend.pos,...){
+  list(
+  geom_line() , 
+  theme_bw(),
+  scale_color_brewer(palette = pal.str),
+  labs(y=ylab,x="Years since second birth",title=title.str),
+  scale_y_continuous(breaks=major.breaks,minor_breaks = minor.breaks),
+  scale_x_continuous(breaks=c(seq(0,20,2)),minor_breaks = c(seq(1,20,2))),
+   theme_minimal(),
+        theme(
+              panel.grid.major.x = element_blank(),
+              panel.grid.minor = element_blank(),
+              legend.title = element_blank(),
+              legend.justification = c(0, 1), 
+              legend.position = "bottom",
+              legend.background = element_blank(),
+              legend.direction="horizontal",
+              text = element_text(size=14,family = "Georgia"),
+              plot.title = element_text(hjust=0.5,vjust=0.5,size = 20, margin = margin(b = 10)),
+              plot.subtitle = element_text(size = 14, color = "darkslategrey", margin = margin(b = 25)),
+              plot.caption = element_text(size = 11, margin = margin(t = 10), color = "grey70", hjust = 0)))
+  }
+```
+  
+```{r 1a_lifetable, include=FALSE,cache=TRUE}
+life.table<-purrr::map(seq(0,19,1),.f=function(i){
+	 risk_set <- dplyr::filter(third.birth, EXPOSURE%in%i & EXPOSURE<=MAXEXP) %>% nrow(.)
+	 events <- dplyr::filter(third.birth, EXPOSURE %in% i & BIRTH3%in%1) %>% nrow(.)
+	 censored <- dplyr::filter(third.birth, EXPOSURE%in%i & BIRTH3%in%0 & EXPOSURE %in% MAXEXP) %>% nrow(.)
+	 life.t<-cbind(risk_set,events,censored)
+	 as.data.frame(life.t)
+})
+life.table<-data.table::rbindlist(life.table,use.names = T,idcol="Year")
+
+life.table<-life.table %>% mutate(hazard=events/risk_set)
+life.table <- life.table %>% mutate(survivor=cumprod(1-hazard))
+life.table$estimated_risk_set[2:nrow(life.table)] <- c(life.table$risk_set[1] * cumprod(life.table$survivor))[1:19]
+life.table$estimated_risk_set[1]<-life.table$risk_set[1]
+  columnames<-c("Year","Risk Set","Events","Censored","Pr(T<sub>i</sub>=j &#8739; T<sub>i</sub> &#8805;
+                j)","Pr(T<sub>i</sub>>j)","Est. Risk Set")
+  col_names<-c("Year","Risk Set","Events","Censored","Pr(T_i=j | T_i >= j)","Pr(T_i>j)","Est. Risk Set)")
+    tb<-htmlTable(txtRound(life.table, 3), 
+              header =  columnames,
+              # Add a column spanner
+              rnames=FALSE,
+              caption="Life table partiy progression to the third Child",
+              align="cccccccc",
+              col.rgroup = c("none", "#F7F7F7"),
+              css.rgroup = "")
+```
+
+### Discrete Time models
+
+The first visualization displays the (lack of) fit of various specifications of the baseline hazard of the chance of a third birth. <br> 
+We model the chance of the third birth using a logistic regression. For each model the outcome is the birth of a third child and the dependent variable is time  (const linear, quadratic, etc.).   
+
+```{r 2a hazard models ,echo=FALSE,cache=T}
+third.birth$EXPOSURE_F <- factor(third.birth$EXPOSURE)
+
+third.birth.sub<-dplyr::select(third.birth,EXPOSURE_F,EXPOSURE,NR,EXP_CAT4)
+########## fit polynominals equation degree one till four
+res.glm.fit.logits<-map(seq(1,4,1),.f=function(i){
+  glm.fit <- glm(BIRTH3 ~ poly(EXPOSURE,degree=i,raw=T), data=third.birth, family=binomial(link="logit"))
+  pred.logits.glm.fit <- predict.glm(glm.fit)
+  pred.odds.glm.fit <- exp(pred.logits.glm.fit)
+  pred.prob.glm.fit <- pred.odds.glm.fit/(1+pred.odds.glm.fit)
+  glm.fit.plot <- ggplot(third.birth,aes_string("EXPOSURE","pred.prob.glm.fit"))+theme_geom_line(pal.str="Set1",title="Plot of third birth Hazard",major.breaks=c(seq(0,0.1,0.02)),minor.breaks=c(seq(0.01,0.1,0.02)),ylab="Hazard",legend.pos = "bottom")
+  res.glm<-list(glm.fit,pred.logits.glm.fit,pred.prob.glm.fit,glm.fit.plot)
+  names(res.glm)<-c(paste("fit",i,sep="_"),paste("logits",i,sep="_"),paste("prob",i,sep="_"),paste("glm.fit.plot",i,sep="_"))
+  res.glm})
+
+
+# Constant Specification
+glm.const.ls<-list()
+glm.const.ls$glm.const <- glm(BIRTH3 ~ 1, data=third.birth, family=binomial(link="logit"))
+glm.const.ls$pred.logits.glm.const <- predict.glm(glm.const.ls$glm.const) # predicted logits
+glm.const.ls$predo.glm.const <- exp(glm.const.ls$pred.logits.glm.const)  #predicted odds
+glm.const.ls$pred.prob.glm.const <-glm.const.ls$predo.glm.const/(1+glm.const.ls$predo.glm.const)   #predicted probabilities
+glm.const.ls$glm.constplot <- ggplot(third.birth, aes_string("EXPOSURE", "glm.const.ls$pred.prob.glm.const")) +
+   geom_line() + 
+  coord_cartesian(ylim=c(0,0.1))+
+  labs(y="Hazard",x="Years since second birth",title="Plot of third birth Hazard")+
+  scale_y_continuous(breaks=c(0.00,0.02,0.04,0.06,0.08,0.10),minor_breaks = seq(0.01,0.1,0.02))+ 
+  scale_x_continuous(breaks=c(seq(0,20,2)),minor_breaks = c(seq(1,20,2))) + theme_minimal() +
+        theme(
+              panel.grid.major.x = element_blank(),
+              panel.grid.minor = element_blank(),
+              legend.title = element_blank(),
+              legend.justification = c(0, 1), 
+              legend.position = "bottom",
+              legend.background = element_blank(),
+              legend.direction="horizontal",
+              text = element_text(size=14,family = "Georgia"),
+              plot.title = element_text(hjust=0.5,vjust=0.5,size = 20, margin = margin(b = 10)),
+              plot.subtitle = element_text(size = 14, color = "darkslategrey", margin = margin(b = 25)),
+              plot.caption = element_text(size = 11, margin = margin(t = 10), color = "grey70", hjust = 0))
+
+names(glm.const.ls)<-c(paste("fit","gen",sep="_"),paste("logits","gen",sep="_"),paste("prob","gen",sep="_"),paste("glm.fit.plot","gen",sep="_"))
+#
+
+############ General Specification#########
+glm.gen.ls<-list()
+glm.gen.ls$glm.gen <- glm(BIRTH3 ~ EXPOSURE_F, data=third.birth, family=binomial(link="logit"))
+glm.gen.ls$pred.logits.glm.gen <- predict.glm(glm.gen.ls$glm.gen)
+glm.gen.ls$pred.odds.glm.gen <- exp(glm.gen.ls$pred.logits.glm.gen)
+glm.gen.ls$pred.pop.glm.gen <- glm.gen.ls$pred.odds.glm.gen/(1+glm.gen.ls$pred.odds.glm.gen)
+glm.gen.ls$glm.gen.plot <- my.ggplot.hazard(third.birth,"EXPOSURE", "glm.gen.ls$pred.pop.glm.gen")
+
+names(glm.gen.ls)<-c(paste("fit","gen",sep="_"),paste("logits","gen",sep="_"),paste("prob","gen",sep="_"),paste("glm.fit.plot","gen",sep="_"))
+
+
+########### Step Function #############
+third.birth$EXP_CAT4<-as.factor(third.birth$EXP_CAT4)
+glm.step.ls<-list()
+glm.step.ls$glm.step <- glm(BIRTH3~EXPOSURE+EXP_CAT4, data=third.birth, family=binomial(link = "logit"))
+glm.step.ls$pred.logits.glm.step <- predict(glm.step.ls$glm.step)
+glm.step.ls$predo.glm.step <- exp(glm.step.ls$pred.logits.glm.step)
+glm.step.ls$pred.prob.glm.step <- glm.step.ls$predo.glm.step/(1+glm.step.ls$predo.glm.step)
+glm.step.ls$plot<-ggplot(data=third.birth, aes_string(x="EXPOSURE",y="glm.step.ls$pred.prob.glm.step")) +
+  geom_line() 
+#glm.step.ls<-list(glm.step,pred.logits.glm.step,predo.glm.step,pred.prob.glm.step)
+names(glm.step.ls)<-c(paste("fit","step",sep="_"),paste("logits","step",sep="_"),paste("prob","step",sep="_"),paste("glm.fit.plot","step",sep="_"))
+res.glm.fit.logits$constant<-glm.const.ls
+res.glm.fit.logits$step<-glm.step.ls
+res.glm.fit.logits$general<-glm.gen.ls
+names(res.glm.fit.logits)<-c("linear","quadratic","cubic","poly_4th_order","constant","step","general")
+
+hazard.const.lin.quad <- ggplot(data=third.birth, aes(x=EXPOSURE)) +
+  coord_cartesian(ylim=c(0,0.12))+
+  scale_colour_manual(values=c('#984ea3','#377eb8','#a65628','#000000'))+
+  geom_line(aes( y=res.glm.fit.logits[[5]][[3]], color="Constant")) +
+        geom_line(aes(y=res.glm.fit.logits[[1]][[3]],color="Linear")) +
+			 geom_line(aes( y=res.glm.fit.logits[[2]][[3]], color="Quadratic")) +
+			 geom_point(data=life.table, aes(x=0:19, y=hazard, color="Sample hazard"),size=1.25)+
+			   labs(y="Hazard",x="Years since second birth")+
+  #guides(guide_colorbar(title="Various specifications"))+
+  scale_y_continuous(breaks=c(seq(0,0.12,0.02)),minor_breaks = seq(0.01,0.12,0.02))+ 
+  scale_x_continuous(breaks=c(seq(0,20,2)),minor_breaks = c(seq(1,20,2)))+
+  guides(colour=guide_legend(title="Specification",nrow=2))+
+  theme_minimal() +
+        theme(
+              panel.grid.major.x = element_blank(),
+              panel.grid.minor = element_blank(),
+              legend.title = element_blank(),
+              legend.justification = c(0, 1), 
+              legend.position = "bottom",
+              legend.background = element_blank(),
+              legend.direction="horizontal",
+              text = element_text(size=14,family = "Georgia"),
+              plot.title = element_text(hjust=0.5,vjust=0.5,size = 20, margin = margin(b = 10)),
+              plot.subtitle = element_text(size = 14, color = "darkslategrey", margin = margin(b = 25)),
+              plot.caption = element_text(size = 11, margin = margin(t = 10), color = "grey70", hjust = 0))
+
+hazard.cubic.four.step<-ggplot(data=third.birth, aes(x=EXPOSURE)) +
+  coord_cartesian(ylim=c(0,0.12))+
+  scale_colour_manual(values=c('#e41a1c','#ff7f00',"#000000",'#4daf4a'))+
+  
+			 geom_line(aes( y=res.glm.fit.logits[[3]][[3]], color="Cubic"))+ 
+			 geom_line(aes( y=res.glm.fit.logits[[4]][[3]], color="Quartic")) +
+  geom_line(aes( y=res.glm.fit.logits[[6]][[3]], color="Stepwise"))+
+			 geom_point(data=life.table, aes(x=0:19, y=hazard,color="Sample hazard"),size=1.25)+
+			   labs(y="Hazard",x="Years since second birth")+
+  #guides(guide_colorbar(title="Various specifications"))+
+  scale_y_continuous(breaks=c(seq(0,0.12,0.02)),minor_breaks = seq(0.01,0.12,0.02))+ 
+  scale_x_continuous(breaks=c(seq(0,20,2)),minor_breaks = c(seq(1,20,2)))+
+    guides(colour=guide_legend(title="Specification",nrow=2,override.aes = list(linetype=0,shape=c(15,15,16,15),size=3)))+ theme_minimal() +
+        theme(
+              panel.grid.major.x = element_blank(),
+              panel.grid.minor = element_blank(),
+              legend.title = element_blank(),
+              legend.justification = c(0, 1), 
+              legend.position = "bottom",
+              legend.background = element_blank(),
+              legend.direction="horizontal",
+              text = element_text(size=14,family = "Georgia"),
+              plot.title = element_text(hjust=0.5,vjust=0.5,size = 20, margin = margin(b = 10)),
+              plot.subtitle = element_text(size = 14, color = "darkslategrey", margin = margin(b = 25)),
+              plot.caption = element_text(size = 11, margin = margin(t = 10), color = "grey70", hjust = 1))
+
+```
+
+```{r disc hazards}
+grid.arrange(hazard.const.lin.quad,hazard.cubic.four.step, nrow=1,ncol=2,top="Various baseline specification")
+```
+
+
+## Continious Event History 
+
+### Kaplan Meier cumulative hazard
+
+The Kaplan-Meier estimator is a simple non-parametric method to obtain an estimate of the survival curve from time-to-event data. 
+It can be used with both discrete and continious time-to-event data. Here our focus is to model the outcome general mortality by educational categories.
+
+#### Kaplan-Meier with covariate education
+
+```{r 2d kaplan meier educ, cache=T}
+library(survival)
+kpm.educ.data<-mort.data
+#kpm.educ.data$EDUCATOIN<-as_factor(kpm.educ.data$EDUCATION)
+kp.meier.educ <- survfit(Surv(MONTH_CONT, DEATH) ~ EDUCATION, data = mort.data)
+kp.meier.educ.sum<-summary(kp.meier.educ)
+#survival function
+kpm.educ.plot.data<-data.frame(kp.meier.educ.sum$time,kp.meier.educ.sum$surv,kp.meier.educ.sum$strata,kp.meier.educ.sum$lower,kp.meier.educ.sum$upper)
+names(kpm.educ.plot.data)<-gsub("kp.meier.educ.sum.","",names(kpm.educ.plot.data))
+levels(kpm.educ.plot.data$strata)<-c("Unknown","None & Primary","Lower Secundary","Higher Secundary","Higher Education")
+ 
+km.surv.plot<-ggplot(kpm.educ.plot.data,aes(x=time,y=surv,color=strata))+scale_x_continuous(breaks=c(seq(0,36,4)),minor_breaks=c(seq(0,36,2)))+geom_line()+ scale_color_brewer(palette = "Dark2")+
+  labs(x="Exposure",y="Survival Prob", title="Survival function")+guides(color=guide_legend("Education",reverse = T))+  theme_minimal() +
+     theme(
+              panel.grid.major.x = element_blank(),
+              panel.grid.minor = element_blank(),
+              legend.title = element_blank(),
+              legend.justification = c(0, 1), 
+              legend.position = "bottom",
+              legend.background = element_blank(),
+              legend.direction="horizontal",
+              text = element_text(size=14,family = "Georgia"),
+              plot.title = element_text(hjust=0.5,vjust=0.5,size = 20, margin = margin(b = 10)),
+              plot.subtitle = element_text(size = 14, color = "darkslategrey", margin = margin(b = 25)),
+              plot.caption = element_text(size = 11, margin = margin(t = 10), color = "grey70", hjust = 1))
+              
+```
+
+
+```{r cum hazard kpm, echo=FALSE, message=FALSE, warning=FALSE, cache=T}
+#
+#plot(kp.meier.educ, fun="cumhaz", col=c(1:10), main="Cumulative hazard function")
+#legend(x = "topleft", legend=labels.pl, col=c(1:10), lty=c(1,1))
+
+
+cum.haz.df <- kpm.educ.plot.data
+cum.haz.df$l.cum.haz<-log(-log(cum.haz.df$surv))
+cum.haz.df$cum.haz<--log(cum.haz.df$surv)
+#levels(cum.haz.df$educ)<-gsub("EDUCATION=","",levels(cum.haz.df$educ))
+p.cum.haz <- ggplot(cum.haz.df, aes(time,cum.haz,color=strata)) +scale_x_continuous(breaks=c(seq(0,36,4)),minor_breaks=c(seq(0,36,2)))+scale_y_continuous(breaks=c(seq(0.0,0.12,0.02)),minor_breaks = c(seq(0.01,0.12,0.02)))+ labs(x="Exposure",y="Cumulative Hazard",title="Cumulative Hazard")+geom_step() +scale_color_brewer(palette = "Dark2")+guides(color=guide_legend(title="Education"))        + theme_minimal() +
+         theme(
+              panel.grid.major.x = element_blank(),
+              panel.grid.minor = element_blank(),
+              legend.title = element_blank(),
+              legend.justification = c(0, 1), 
+              legend.position = "bottom",
+              legend.background = element_blank(),
+              legend.direction="horizontal",
+              text = element_text(size=14,family = "Georgia"),
+              plot.title = element_text(hjust=0.5,vjust=0.5,size = 20, margin = margin(b = 10)),
+              plot.subtitle = element_text(size = 14, color = "darkslategrey", margin = margin(b = 25)),
+              plot.caption = element_text(size = 11, margin = margin(t = 10), color = "grey70", hjust = 1))
+              
+#cox.age
+grid_arrange_shared_legend <- function(..., ncol = length(list(...)), nrow = 1, position = c("bottom", "right")) {
+
+  plots <- list(...)
+  position <- match.arg(position)
+  g <- ggplotGrob(plots[[1]] + theme(legend.position = position))$grobs
+  legend <- g[[which(sapply(g, function(x) x$name) == "guide-box")]]
+  lheight <- sum(legend$height)
+  lwidth <- sum(legend$width)
+  gl <- lapply(plots, function(x) x + theme(legend.position="none"))
+  gl <- c(gl, ncol = ncol, nrow = nrow)
+
+  combined <- switch(position,
+                     "bottom" = arrangeGrob(do.call(arrangeGrob, gl),
+                                            legend,
+                                            ncol = 1,
+                                            heights = unit.c(unit(1, "npc") - lheight, lheight)),
+                     "right" = arrangeGrob(do.call(arrangeGrob, gl),
+                                           legend,
+                                           ncol = 2,
+                                           widths = unit.c(unit(1, "npc") - lwidth, lwidth)))
+
+  grid.newpage()
+  grid.draw(combined)
+
+  # return gtable invisibly
+  invisible(combined)
+
+}
+```
+```{r grid, message=F,echo=F}
+grid_arrange_shared_legend(km.surv.plot,p.cum.haz, position ="bottom")
+```
+
+### Cox regression with covariate education
+
+We continue to study the outcome general mortality risk. The following graph shows the recovered non-parametric cummulative hazard of general mortality by educational according. We obtained the cum. hazard function from a cox regression. <br>
+The cox regression is a tool to build predictive models for continious time-to-event data (see: e.g. SPSS Manual 22). It allows to study the effect of a covariate on the outcome without assumptions about the hazard function. <br>
+<!-- The figure shows the effect of education on the estimated survival function.  -->
+
+```{r 2.e COX regression EDUCATOIN, echo=FALSE, message=FALSE, warning=FALSE, cache=T, results='asis'}
+mort.data$EDUCATION<- haven::as_factor(mort.data$EDUCATION)
+
+mort.data$HOUSING <- haven::as_factor(mort.data$HOUSING)
+
+cox.educ.5<- coxph(Surv(mort.data$MONTH_CONT, mort.data$DEATH) ~ EDUCATION, data = mort.data)
+
+#stargazer(cox.educ.5,type="html",dep.var.labels = "Log H(t)",covariate.labels=c(paste0(paste0("&beta;<sub>",seq(2,5,1)),"</sub>")),keep.stat=c("n","ll"))
+wald.test.stats<-round((cox.educ.5$coefficients)^2/diag(cox.educ.5$var),3)
+```
+
+```{r cox educ survival plot,cache=T}
+
+new_df <- with(mort.data,
+               data.frame(EDUCATION = c(levels(haven::as_factor(mort.data$EDUCATION)))
+                          )
+)
+
+# Survival curves with new data
+#%%%%%%%%%%%%%%%%%%%%%%%%%%%
+#Approach taken from https://github.com/kassambara/survminer/issues/67
+library(survminer)
+library(survival)
+fit.cox.educ.5 <- survfit(cox.educ.5, newdata = new_df)
+cox.educ.fit5<-survfit(cox.educ.5)
+# plot<-ggsurvplot(fit.cox.educ.5, conf.int = F, palette = "Dark2",ylim=c(0.9,1), break.time.by = 4, ggtheme=theme_bw(),xlab = "Months",y="Survival",main = "Cox Regression within group survival")
+# plot$plot+scale_color_brewer(palette="Dark2",labels =c(levels(mort.data$EDUCATION)))+guides(color=guide_legend(title="Education")) +theme(plot.title = element_text(hjust=0.5,vjust=0.5),legend.position = "bottom")
+```
+
+```{r 2.e COX Educ cumhaz,cache=T}
+#autoplot(survfit(cox.educ.5),fun = 'cumhaz')
+#obtain recoverd baseline cum.hazard
+plot.cumhaz.eudc.cox<-ggsurvplot(fit.cox.educ.5,font.x=11,font.y=11,font.main=12, conf.int = F, linetype="solid",palette = "Dark2",ylim=c(0.0,0.12), break.time.by = 4, ggtheme=theme_minimal(),xlab = "Months",ylab="Cum Hazard",main = "Cox Regression within group cumulative hazard",fun="cumhaz",risk.table = F)
+plot.cumhaz.eudc.cox$plot+scale_color_brewer(palette="Set1",labels =c(levels(mort.data$EDUCATION)))+guides(color=guide_legend(title="Education"))        +
+        theme(
+        
+              panel.grid.major.x = element_blank(),
+              panel.grid.minor = element_blank(),
+              legend.title = element_blank(),
+              legend.justification = c(0, 1), 
+              legend.position = "bottom",
+              legend.background = element_blank(),
+              legend.direction="horizontal",
+              text = element_text(size=14,family = "Georgia"),
+              plot.title = element_text(hjust=0.5,vjust=0.5,size = 20, margin = margin(b = 10)),
+              plot.subtitle = element_text(size = 14, color = "darkslategrey", margin = margin(b = 25)),
+              plot.caption = element_text(size = 11, margin = margin(t = 10), color = "grey70", hjust = 0))
+```  

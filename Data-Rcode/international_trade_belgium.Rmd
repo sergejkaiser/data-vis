@@ -1,0 +1,362 @@
+---
+title: "Excerpts from data assignment for 'Adv. International Trade Theory'"
+author: "Sergej Kaiser"
+date: "05/05/2017"
+output:
+ html_document: default
+ html_notebook: default
+css: markdown7.css
+---
+The following document presents some of the visualizations, which I created for the course 'Adv. International Trade Theory'. The data visulaizations are based on the Eurostat dataset: 'Annual enterprise statistics by size class for special aggregates of activities (NACE Rev. 2)' for the year 2011.
+```{r, include=FALSE}
+library(tidyverse)
+library(haven)
+library(knitr)
+  opts_chunk$set(warning=FALSE, 
+                 message=FALSE, 
+                 echo=FALSE, 
+                 dpi=96,
+                 fig.width=12, fig.height=8, # Default figure widths
+                 dev="png", dev.args=list(type="cairo"), # The png device
+                 # Change to dev="postscript" if you want the EPS-files
+                 # for submitting. Also remove the dev.args() as the postscript
+                 # doesn't accept the type="cairo" argument.
+                 error=FALSE)
+setwd("/Users/sergej/blog")
+load('trade_assignment.Rdata')
+ggpie <- function (dat, by, totals) {
+  ggplot(dat, aes_string(x=factor(1), y=totals, fill=by)) +
+    geom_bar(stat='identity', color='black') +
+    scale_fill_brewer() +
+    guides(fill=guide_legend(override.aes=list(colour=NA))) + # removes black borders from legend
+    coord_polar(theta='y') +
+    theme(axis.ticks=element_blank(),
+          axis.text.y=element_blank(),
+          axis.text.x=element_text(colour='black'),
+          axis.title=element_blank(),
+          text = element_text(size = 12),
+          panel.background = element_rect(fill = "white"))+
+    scale_y_continuous(breaks=cumsum(dat[[totals]]) - dat[[totals]] /4, labels=dat[[by]]) 
+}
+
+```
+```{r , cache=T}
+#shorten description
+data.ls<-map(data.ls, function(x){ 
+x[['SIZE_EMP']] <- as.factor(x[['SIZE_EMP']])
+x[['Value']]<-gsub(" ","",x[['Value']])
+x[['Value']]<-as.numeric(x[['Value']])
+x[['SIZE_EMP']] <- forcats::fct_recode(x[['SIZE_EMP']], "0 to 9"="From 0 to 9 persons employed","20 to 49"="From 20 to 49 persons employed","10 to 19"="From 10 to 19 persons employed",">250"="250 persons employed or more","50 to 249"="From 50 to 249 persons employed") 
+x})
+number.employed<-data.ls[['number.employed']]
+value.added<-data.ls[['value.added']]
+number.firms <- data.ls[['number.firms']]
+
+#rename columns
+colnames(number.firms)[colnames(number.firms)=="Value"] <- "number.firms"
+colnames(number.employed)[colnames(number.employed)=="Value"] <- "number.employed"
+colnames(value.added)[colnames(value.added)=="Value"] <- "value.added"
+
+
+
+#Reference Country and prepare exclusing of Category Total
+Country<- "Belgium"
+exclude.category<-"Total"
+
+value.added.per.worker <- inner_join(value.added,number.employed,by=c("SIZE_EMP","GEO","NACE_R2","TIME"))
+value.added.per.worker <- inner_join(value.added.per.worker,number.firms,by=c("SIZE_EMP","GEO","NACE_R2","TIME"))
+
+#Get rid of some unnecessary columns
+value.added.per.worker<-select(value.added.per.worker, SIZE_EMP , GEO , NACE_R2, TIME ,value.added, number.firms,number.employed)
+value.added.per.worker$value.added.per.worker <-(value.added.per.worker$value.added)/ value.added.per.worker$number.employed
+
+#reduce data to only include estonia
+value.added.per.worker<-filter(value.added.per.worker, GEO %in% Country)
+value.added.per.worker<-value.added.per.worker %>% mutate(rel.number.employed = 100*(number.employed/number.employed[SIZE_EMP == "Total"]))
+value.added.per.worker<-value.added.per.worker %>% mutate(rel.number.firms = 100*( number.firms/number.firms[SIZE_EMP == "Total"]))
+value.added.per.worker.short<-filter(value.added.per.worker, ! SIZE_EMP %in% exclude.category)
+value.added.per.worker.short<-as_tibble(value.added.per.worker.short)
+va.short.plot<-value.added.per.worker.short%>%select(.,SIZE_EMP, rel.number.employed, rel.number.firms) %>% gather(.,key="concept",value="value",-SIZE_EMP)
+
+right_label <- va.short.plot %>%
+        group_by(SIZE_EMP) %>%
+        arrange(desc(value)) %>%
+        top_n(1)
+
+left_label <- va.short.plot %>%
+        group_by(SIZE_EMP) %>%
+        arrange(desc(value)) %>%
+        slice(2)
+```
+```{r, warning=F,message=F,echo=F}
+#plot
+
+# ggplot(value.added.per.worker.short, aes(x=reorder(SIZE_EMP, -rel.number.employed),y=(rel.number.employed))) +
+#     geom_bar(stat="identity", position="dodge") +
+#     scale_x_discrete("Size Class")+
+#   scale_y_continuous("Percentage") +
+#     ggtitle(expression(atop("Employment Distribution by Size Class")))+
+#   theme_bw(base_size = 11, base_family = "Georgia") +
+#   theme( plot.title = element_text(hjust=0.5,vjust=0.5),
+#          legend.position = "bottom", # legend location in graph
+#          #panel.grid.minor = element_blank(),
+#          axis.title=element_text( size="11"),
+#          axis.text.x=element_text(angle =0, size=11))
+# 
+# ggplot(value.added.per.worker.short, aes(value, SIZE_EMP)) +
+#         geom_line(aes(group = SIZE_EMP)) +
+#         geom_point(aes(color = concept))
+
+p<-ggplot(va.short.plot, aes(value, reorder(SIZE_EMP,-value))) +
+        geom_line(aes(group = SIZE_EMP)) +
+        geom_point(aes(color = concept), size = 2.5) +
+        geom_text(data = right_label, aes(color = concept, label = round(value, 0)),
+                  size = 5, hjust = -.5) +
+        geom_text(data = left_label, aes(color = concept, label = round(value, 0)),
+                  size = 5, hjust = 1.5) + 
+    labs(x="Percentage",y="Number of Employees")
+
+p + scale_color_discrete(labels = c("Share of Employees ", "Share of Firms")) +
+        labs(x="Percent",title = "Percentage share of employees and firms by firm size",
+             subtitle = "Most of the firms in Belgium are quite small.  Yet, the relatively small number \n of large firms (>250)  employ most of belgian employees.") +
+        theme_minimal() +
+        theme(      axis.text.x=element_text(size=14),
+         axis.text.y=element_text(size=14,),
+           axis.title = element_blank(),
+              panel.grid.major.x = element_blank(),
+              panel.grid.minor = element_blank(),
+              legend.title = element_blank(),
+              legend.justification = c(0, 1), 
+              legend.position = c(.1, 1.05),
+              legend.background = element_blank(),
+              legend.direction="horizontal",
+              text = element_text(size=14, family = "Georgia"),
+              plot.title = element_text(size = 20, margin = margin(b = 15)),
+              plot.subtitle = element_text(size = 14, color = "darkslategrey", margin = margin(b = 30)),
+              plot.caption = element_text(size = 8, margin = margin(t = 15), color = "grey70", hjust = 0))
+```
+
+```{r belgium only, cache=T}
+#reduce to only belgium
+library(gridExtra)
+#print(levels(value.added.per.worker.short$SIZE_EMP))
+#value.added.per.worker.short$SIZE_EMP<-factor(value.added.per.worker.short$SIZE_EMP,levels(value.added.per.worker.short$SIZE_EMP)[c(2:5,1)])
+value.added.per.worker.short$value.added.per.worker <-((value.added.per.worker.short$value.added)/ value.added.per.worker.short$number.employed)*100
+
+
+va.short.plot.2<-value.added.per.worker.short%>%select(.,SIZE_EMP, value.added.per.worker) 
+
+
+ggplot(va.short.plot.2, aes( reorder(SIZE_EMP,value.added.per.worker),value.added.per.worker)) +
+  geom_bar(stat="identity", position="dodge")  +
+  scale_y_continuous(expand = c(-0.00,0.00), breaks=c(seq(0,12,2)),limits=c(0,12))+
+   labs(x="Value added per worker (in 10 thsd €)", "Share of Firms",title = "Labor productivity by firm size", subtitle = "The figure shows that labor productivity is higher for large firms.")+
+        theme_minimal() +
+        theme(
+              panel.grid.major.x = element_blank(),
+              panel.grid.minor = element_blank(),
+              legend.title = element_blank(),
+              legend.justification = c(0, 1), 
+              legend.position = c(.1, 1.075),
+              legend.background = element_blank(),
+              legend.direction="horizontal",
+              text = element_text(size=14,family = "Georgia"),
+              plot.title = element_text(hjust=0.5,vjust=0.5,size = 20, margin = margin(b = 10)),
+              plot.subtitle = element_text(size = 14, color = "darkslategrey", margin = margin(b = 25)),
+              plot.caption = element_text(size = 11, margin = margin(t = 10), color = "grey70", hjust = 0))
+```
+
+
+
+
+
+
+
+
+
+
+
+
+```{r chart, cache=T, echo=F,warning=F,message=F}
+#piechart main acitivity in manufacturing according to value added at factor cost
+va.manuf <- read.csv("VA_Manufac_Data2.csv", dec = ".", sep = ",",na.strings=":",header=T, stringsAsFactors=FALSE)
+
+colnames(va.manuf)[colnames(va.manuf)=="Value"] <- "value.added.manuf"
+va.manuf$NACE_R2<- stringr::str_replace(va.manuf$NACE_R2,"Maunfacture of", "")
+
+va.manuf$GEO<- as.character(va.manuf$GEO)
+va.manuf$NACE_R2<-as.factor(va.manuf$NACE_R2)
+va.manuf$value.added.manuf<-gsub(" ","",va.manuf$value.added.manuf)
+va.manuf$value.added.manuf <- as.numeric(va.manuf$value.added.manuf)
+va.manuf$NACE_R2 <-gsub(" ",".",va.manuf$NACE_R2 )
+va.manuf$NACE_R2 <-as.factor(va.manuf$NACE_R2)
+va.manuf.short<-filter(va.manuf, GEO %in% Country)
+va.manuf.short$GEO<-as.factor(va.manuf.short$GEO)
+
+#relative values
+va.manuf.short<- va.manuf.short%>% mutate(rel.share.va = value.added.manuf/value.added.manuf[NACE_R2 == "Manufacturing"])
+
+#get rid of unnecessary stuff
+va.manuf$Flag.and.Footnotes<-NULL
+va.manuf.short$Flag.and.Footnotes<-NULL
+#va.manuf.short$NACE_R2<- as.character(va.manuf.short$NACE_R2)
+#and define which category I will exclude
+exclude<-"Manufacturing"
+plot.df<-filter(va.manuf.short, ! NACE_R2 %in% exclude)
+
+#plot.df$value.added<- as.numeric(plot.df$X2)
+
+plot.df$NACE_R2 <- as.character(plot.df$NACE_R2)
+
+#nicer descritption
+plot.df$NACE_R2<-gsub("Manufacture.of.", "",plot.df$NACE_R2,perl=T,fixed=T)
+#plot.df$NACE_R2<-gsub("and", "",plot.df$NACE_R2,perl=T,fixed=T)
+plot.df$NACE_R2<-gsub(";.manufacture.of.articles.of.straw..plaiting.materials","",plot.df$NACE_R2,fixed=T)
+plot.df$NACE_R2<-gsub(".", " ",plot.df$NACE_R2,perl=T,fixed=T)
+plot.df$NACE_R2<-gsub("equipment", "equip",plot.df$NACE_R2,fixed=T)
+plot.df$NACE_R2<-gsub(" pharmaceutical ", " pharma ",plot.df$NACE_R2,fixed=T)
+plot.df$NACE_R2<-gsub("; manufacture of articles of straw and plaiting materials","",plot.df$NACE_R2,fixed=T)
+plot.df$NACE_R2<-gsub("and pharma preparations", "and preparations",plot.df$NACE_R2,perl=T,fixed=T)
+plot.df$NACE_R2<-gsub("except machinery and equip", "",plot.df$NACE_R2,fixed=T)
+plot.df$NACE_R2<-gsub(", except machinery and equip","",plot.df$NACE_R2,fixed=T)
+plot.df$NACE_R2<-gsub("recorded","",plot.df$NACE_R2,fixed=T)
+plot.df$NACE_R2<-gsub(", except furniture","",plot.df$NACE_R2,fixed=T)
+plot.df$NACE_R2<-gsub("and pharma preparations","and preparations",plot.df$NACE_R2,fixed=T)
+plot.df$NACE_R2<-gsub("electrical equip","electrical equipment",plot.df$NACE_R2,fixed=T) 
+plot.df$NACE_R2<-gsub("and equip","", plot.df$NACE_R2,fixed=T)
+plot.df$NACE_R2<-Hmisc::capitalize(plot.df$NACE_R2)
+#economist style plot
+plot.df<-plyr::rename(plot.df, c('NACE_R2'="Manufacturing"))
+```
+```{r va by activity, echo=FALSE, message=FALSE, warning=FALSE}
+plot.df.na.rm<-plot.df[complete.cases(plot.df),]
+ggplot(plot.df.na.rm, aes(x=reorder(Manufacturing, value.added.manuf), y=value.added.manuf/100)) +
+  #geom_bar(stat="identity", position="dodge") +
+      geom_point( size = 2.5) +
+  scale_y_continuous(breaks=c(seq(0,70,10)),expand=c(0.04,0))+
+    labs(y="hundred thousand euros",title="Value added at factor cost across manufacturing industries",x="")+
+  coord_flip()+
+  theme_minimal(base_size = 12, base_family = "Georgia") +
+  theme(   panel.grid.major.x = element_blank(),
+           legend.title = element_blank(),
+         legend.position = "bottom", # legend location in graph
+         axis.text.x=element_text(size="14", hjust = -.02),
+         axis.text.y=element_text(size="14", hjust = -.02),
+         panel.grid.minor = element_blank(),
+         legend.background = element_blank(),
+         axis.title=element_text( size="14"),
+         plot.title = element_text(hjust=0.5,vjust=0.5,size = 20, margin = margin(b = 10)),
+              plot.subtitle = element_text(size = 12, color = "darkslategrey", margin = margin(b = 25)),
+              plot.caption = element_text(size = 8, margin = margin(t = 10), color = "grey70", hjust = 0)) 
+  
+
+```
+
+```{r va by ind, eval=FALSE, message=FALSE, warning=FALSE, include=FALSE}
+ggplot(plot.df, aes(x=reorder(Manufacturing,rel.share.va), y=rel.share.va*100)) +
+ # geom_bar(stat="identity", position="dodge") +
+  scale_y_continuous(breaks=c(0,20,40,60))+
+    labs(y="10^8 €",title="Value added of three largest manufacturing industries",x="")+
+  theme_minimal(base_size = 11, base_family = "Georgia") +
+  theme( plot.title = element_text(hjust=0.5,vjust=0.5),
+                   legend.title = element_blank(),
+         legend.position = "bottom", # legend location in graph
+         axis.text.x=element_text(size=14,angle = -45, hjust = -.02),
+         axis.text.y=element_text(size=14,),
+         panel.grid.minor = element_blank(),
+         legend.background = element_blank(),
+         axis.title=element_text( size="14"),
+         plot.title = element_text(size = 20, margin = margin(b = 10)),
+              plot.subtitle = element_text(size = 10, color = "darkslategrey", margin = margin(b = 25)),
+              plot.caption = element_text(size = 8, margin = margin(t = 10), color = "grey70", hjust = 0)) 
+
+```
+```{r}
+#start pie chart
+industries<-c("Manufacturing","Manufacture.of.chemicals.and.chemical.products" ,"Manufacture.of.food.products","Manufacture.of.fabricated.metal.products,.except.machinery.and.equipment")
+pie.with.total<- filter(va.manuf.short,NACE_R2 %in% industries)
+#pie.with.three.big.ind<- filter(va.manuf.short,NACE_R2 %in% industries.w.manufac)
+
+#new observation capturing the share of the rest of manufacturing
+library(tibble)
+pie.with.total<-select(pie.with.total,-INDIC_SB,-rel.share.va)
+pie.with.total<-pie.with.total %>% add_row( 
+  TIME=2011,
+  GEO="Belgium",
+  NACE_R2="Rest.of.Manufacturing",
+  value.added.manuf=as.numeric(
+      select(filter(pie.with.total, NACE_R2 %in% "Manufacturing"),value.added.manuf) -      
+      sum(select(filter(pie.with.total, ! NACE_R2 %in% "Manufacturing"),value.added.manuf))
+            )
+  )
+#drop aggregate
+pie.with.total<-dplyr::filter(pie.with.total,! NACE_R2 %in% "Manufacturing")
+#nicer descriptions
+pie.with.total$NACE_R2<-gsub("Manufacture.of.", "",pie.with.total$NACE_R2)
+pie.with.total$NACE_R2<-gsub(",.except.machinery.and.equipment", "",pie.with.total$NACE_R2)
+pie.with.total$NACE_R2<-gsub("\\.", " ",pie.with.total$NACE_R2)
+pie.with.total$NACE_R2<-Hmisc::capitalize(pie.with.total$NACE_R2)
+blank_theme <- theme_minimal()+
+theme(
+    axis.title.x = element_blank(),
+    axis.title.y = element_blank(),
+    panel.border = element_blank(),
+    panel.grid=element_blank(),
+    axis.ticks = element_blank(),
+    plot.title=element_text(size=14, face="bold")
+  )
+
+#percentage points
+pie.with.total<- pie.with.total%>% mutate(rel.share.va = 100*value.added.manuf/sum(value.added.manuf))
+```
+```{r}
+ggplot(pie.with.total, aes(x=reorder(NACE_R2,value.added.manuf),y=rel.share.va))+
+  geom_bar(stat="identity", position="dodge") +
+  #geom_point(size=1.5)+
+  scale_y_continuous(breaks=c(seq(0,60,10)))+
+    labs(y="Percent",title="Share of three largest industries in the manufacturing sector",x="", subtitle="The share of value-added of the three largest manufacturing industries s roughly 1/3  of the total \n manufacturing value-added. The chemical products industry has the largest value-added share of approx. 15%.")+
+  theme_minimal(base_size = 14, base_family = "Georgia") +
+  theme(  panel.grid.major.x = element_blank(),
+                   legend.title = element_blank(),
+         legend.position = "bottom", # legend location in graph
+         #axis.text.x=element_text(angle =0, hjust = -.02,vjust=-0.9),
+         panel.grid.minor = element_blank(),
+         legend.background = element_blank(),
+         axis.title=element_text( size="14"),
+         plot.title = element_text(hjust=0.5,vjust=0.5,size = 20, margin = margin(b = 10)),
+              plot.subtitle = element_text(size = 14, color = "darkslategrey", margin = margin(b = 25)),
+              plot.caption = element_text(size = 8, margin = margin(t = 10), color = "grey70", hjust = 0))  
+```
+```{r, eval=FALSE, include=FALSE}
+ggpie(pie.with.three.big.ind,by='Manufacture',totals='value.added.manuf')+
+  
+  labs(title="Three main activites manufacturing in comparism")
+  #theme(axis.ticks.margin=unit(0,"lines"),
+   #     plot.margin=rep(unit(0, "lines"),5))
+```
+```{r, message=FALSE, warning=FALSE, include=FALSE}
+va_expr<-read.csv("TIVA_OECD_WTO.csv",dec = ".", sep = ";",header=T, stringsAsFactors=FALSE)
+unique(va_expr$Industry)
+exclude.service.other<- c("Agriculture, hunting, forestry and fishing", "Mining and quarrying" ,"Construction", "Wholesale and retail trade; Hotels and restaurants",  
+"Transport and storage, post and telecommunication" ,"Financial intermediation","Business services"                                   
+,"Other services")  
+va_expr<- dplyr::filter(va_expr, Industry %in% exclude.service.other)
+va_expr$Industry<-as.factor(va_expr$Industry)
+va_expr$Country<-as.factor(va_expr$Country)
+va_expr$Value<-gsub(",",".",va_expr$Value)
+va_expr$Value<- as.numeric(va_expr$Value)
+va_expr<- va_expr%>% mutate(rel.share.va = Value/Value)
+```
+```{r, eval=FALSE, message=FALSE, warning=FALSE, include=FALSE}
+ggplot(va_expr, aes(x=reorder(Industry,-Value), y=Value, fill=Country)) +
+  geom_bar(stat="identity", position="dodge") +
+  scale_x_discrete("Manufacture")+
+  scale_y_continuous("Mio US Dollar")+
+  ggtitle(expression(atop("Value-added trade by activity")))+   
+  theme_bw(base_size = 11, base_family = "Georgia") +
+  theme( plot.title = element_text(hjust=0.5,vjust=0.5),
+         legend.position = "bottom", # legend location in graph
+         axis.text.x=element_text(angle = -45, hjust = -.02),
+         #panel.grid.minor = element_blank(),
+         axis.title=element_text( size="11")) 
+```

@@ -1,0 +1,1271 @@
+---
+title: "Excerpts from network analysis assignment"
+author: "Sergej Kaiser"
+date: "05/05/2017"
+output:
+  html_document: default
+html_notebook: default
+css: markdown7.css
+---
+This document shows some of the work that I have done for a course on social networks at the KU Leuven. The first part consits of three figures from the exploratory analysis of a international trade network. Specifically, I analysed the international manufacturing trade network at the country level for 2005. <br> The second part analyses the friendship network in a hungarian high school class and its evolution. This part compares the friendship network to a simulated random network. Second, it compares the fit of a statistical network model to the friendship network.
+
+```{r setup, echo=FALSE, message=FALSE, warning=FALSE}
+library(knitr)
+  opts_chunk$set(warning=FALSE, 
+                 message=FALSE, 
+                 echo=FALSE, 
+                 dpi=96,
+                 fig.width=12, fig.height=8, # Default figure widths
+                 dev="png", dev.args=list(type="cairo"), # The png device
+                 # Change to dev="postscript" if you want the EPS-files
+                 # for submitting. Also remove the dev.args() as the postscript
+                 # doesn't accept the type="cairo" argument.
+                 error=FALSE)
+```
+```{r packages, message=FALSE, warning=FALSE, include=FALSE,cache=F}
+
+rm=ls()
+detachAllPackages <- function() {
+  
+  basic.packages <- c("package:stats","package:graphics","package:grDevices","package:utils","package:datasets","package:methods","package:base")
+  
+  package.list <- search()[ifelse(unlist(gregexpr("package:",search()))==1,TRUE,FALSE)]
+  
+  package.list <- setdiff(package.list,basic.packages)
+  
+  if (length(package.list)>0)  for (package in package.list) detach(package, character.only=TRUE)
+  
+}
+detachAllPackages()
+lapply(c("sna", "ggplot2","intergraph", "GGally", "igraph", "network", "tidyverse"), 
+       require, character.only=T)
+```
+```{r step1, cache=T}
+# Note that the output of graph.coreness refers simply to the *degree*
+# of the k-core, not to the k-core itself; thus, two vertices both with 
+# coreness of 3 may not be connected at all and thus may be in separate
+# k-cores. 
+#
+# One way to get a sense of the actual k-core structure is to simply 
+# plot the graph and color-code by k-core:
+make_k_core_plot <- function (g) {
+  lay1 <- layout_with_fr(g)
+  plot(g, 
+       vertex.color = graph.coreness(g), 
+       layout=lay1, 
+       edge.arrow.size = .5)
+} 
+cum.distr.plot<-function(g,attrib ){
+  df<-get.data.frame(g,what=c("vertices"))
+  namex <- deparse(substitute(attrib))
+  call<-substitute(dplyr::select(df, name, attrib))
+  v<-eval(call)
+  
+  v<-sort(v)
+  v<-as.data.frame(v)
+  call.3<-substitute(plyr::arrange(df,order(attrib)))
+  df<-eval(call.3)
+  namexs<-c("COU",deparse(substitute(attrib)))
+  names(v)<-namexs
+#  print(v)
+  v$cum.rel.freq<-cumsum(v[,2])/sum(v[,2])
+  return(v)
+}
+
+load("edgelist_weights.Rdata")
+load("verticies_additional.Rdata")
+
+exgr.2005.manufac.graph<-graph.data.frame(select(exports.2005.manufacturing,COU,PAR,Value), vertices=exports.2005.manufacturing.actors)
+#exclude self loops, result is a simple graph
+exgr.2005.manufac.graph<- simplify(exgr.2005.manufac.graph)
+#diameter, density, mean shortest path
+#longest shortest path 2
+exgr.2005.manufac.graph$diameter<-diameter(exgr.2005.manufac.graph, directed = TRUE, unconnected = TRUE, weights = NULL)
+#very dense 0.7
+exgr.2005.manufac.graph$density<-edge_density(exgr.2005.manufac.graph, loops=F)
+#low mean distance
+exgr.2005.manufac.graph$mean_distance<-mean_distance(exgr.2005.manufac.graph, directed=T)
+#degree distribution #measure of influence
+
+V(exgr.2005.manufac.graph)$deg.in <- degree(exgr.2005.manufac.graph, mode="in")
+
+V(exgr.2005.manufac.graph)$deg.out <- degree(exgr.2005.manufac.graph, mode="out")
+
+
+deg.dist <- degree_distribution(exgr.2005.manufac.graph, cumulative=T, mode="all")
+```
+```{r degree dist plot, message=FALSE, warning=FALSE}
+plot( x=0:max(igraph::degree(exgr.2005.manufac.graph, mode="all")), y=1-deg.dist, pch=19, cex=1.2, col="orange", 
+      xlab="Total degree", ylab="Cumulative Frequency", main='Manufacturing World Trade Network')
+```
+The total degree distribution shows that the countries with many trade ties account for a large share of the total number of trade relationships.
+Moreover, the figure shows that the total degree distrubtion is less skewed compared to the in and out-degree distrbution. 
+```{r degree dist in and out plot, echo=FALSE, message=FALSE, warning=FALSE}
+exgr.2005.manufac.graph$deg.dist.in <- degree_distribution(exgr.2005.manufac.graph, cumulative=T, mode="in")
+exgr.2005.manufac.graph$deg.dist.out<-degree_distribution(exgr.2005.manufac.graph, cumulative=T, mode="out")
+#heterogeneity 
+
+par(mfrow=c(1,2))
+
+plot( x=0:max(V(exgr.2005.manufac.graph)$deg.in), y=1-exgr.2005.manufac.graph$deg.dist.in , pch=19, cex=1.2, col="orange", 
+      xlab="In Degree", ylab="Cumulative Frequency",main='Manufacturing World Trade Network')
+
+plot( x=0:max(V(exgr.2005.manufac.graph)$deg.out), y=1-exgr.2005.manufac.graph$deg.dist.out, pch=19, cex=1.2,  col="orange", 
+      xlab="Out Degree", ylab="Cumulative Frequency",main='Manufacturing World Trade Network')
+
+par(mfrow=c(1,1))
+```
+
+```{r hub trans, cache=T}
+#value is mean of two countries in trading partnership
+# closeness centrality 
+V(exgr.2005.manufac.graph)$closeness.centr.in<-closeness(exgr.2005.manufac.graph, mode="in", weights=NA ) 
+V(exgr.2005.manufac.graph)$closeness.centr.out<-closeness(exgr.2005.manufac.graph, mode="out", weights=NA ) 
+#0.28 implies that network quite far away from being domination by single actor, but also no completly equal 
+exgr.2005.manufac.graph$Network.centralization.in<-centr_clo(exgr.2005.manufac.graph, mode="in", normalized=T)$centralization
+exgr.2005.manufac.graph$Network.centralization.out<-centr_clo(exgr.2005.manufac.graph, mode="out", normalized=T)$centralization
+
+
+#hubscores
+V(exgr.2005.manufac.graph)$hub.s <- hub_score(exgr.2005.manufac.graph, weights=NA)$vector
+V(exgr.2005.manufac.graph)$authr.s <- authority_score(exgr.2005.manufac.graph, weights=NA)$vector
+
+
+#transitivity clustering
+exgr.2005.manufac.graph$trans.global<-transitivity(exgr.2005.manufac.graph,type=c("global"))
+
+V(exgr.2005.manufac.graph)$trans.local<-transitivity(exgr.2005.manufac.graph,type=c("local"))
+#plot(cum.distr.plot(g=exgr.2005.manufac.graph, attrib=trans.local)$trans.local,cum.distr.plot(g=exgr.2005.manufac.graph, attrib=trans.local)$cum.rel.freq)
+exgr.2005.network<-intergraph::asNetwork((exgr.2005.manufac.graph))
+
+#par(mfrow(c(1,2)))
+#plot(exgr.2005.manufac.graph, vertex.size=V(exgr.2005.manufac.graph)$hub.s*10, main="Hubs", layout=layout_nicely(exgr.2005.manufac.graph),vertex.label.dist = 0.5, vertex.label.cex = 0.7, edge.width = 0.5)
+#plot(exgr.2005.manufac.graph, vertex.size=V(exgr.2005.manufac.graph)$authr.s*15, main="Authorities", layout=layout_nicely(exgr.2005.manufac.graph),vertex.label.dist = .6, vertex.label.cex = 0.5, edge.width = 0.1)
+
+l.nice<-layout_nicely(exgr.2005.manufac.graph) 
+
+
+
+
+
+
+members<-membership(cluster_louvain(as.undirected(exgr.2005.manufac.graph, mode="collapse")))
+#svg(file = "communities.png" units="in",      width=5,      height=4,      pointsize=12,      res=72)
+
+#categorize k-core values into 6 cat
+exgr.2005.manufac.graph$cor_cont<-graph.coreness(exgr.2005.manufac.graph)
+exgr.2005.manufac.graph$coreness<-ifelse(graph.coreness(exgr.2005.manufac.graph)>139,140 ,graph.coreness(exgr.2005.manufac.graph))
+exgr.2005.manufac.graph$coreness<-ifelse((exgr.2005.manufac.graph$coreness<140 &exgr.2005.manufac.graph$coreness>129),135,exgr.2005.manufac.graph$coreness)
+exgr.2005.manufac.graph$coreness<-ifelse((exgr.2005.manufac.graph$coreness<130 &exgr.2005.manufac.graph$coreness>119),125,exgr.2005.manufac.graph$coreness)
+exgr.2005.manufac.graph$coreness<-ifelse((exgr.2005.manufac.graph$coreness<120 &exgr.2005.manufac.graph$coreness>100),110,exgr.2005.manufac.graph$coreness)
+exgr.2005.manufac.graph$coreness<-ifelse((exgr.2005.manufac.graph$coreness<100 &exgr.2005.manufac.graph$coreness>75),90,exgr.2005.manufac.graph$coreness)
+exgr.2005.manufac.graph$coreness<-ifelse((exgr.2005.manufac.graph$coreness<65 &exgr.2005.manufac.graph$coreness>48),57,exgr.2005.manufac.graph$coreness)
+```
+```{r plot community subgraph, echo=FALSE, message=FALSE, warning=FALSE}
+par(mfrow=c(1,2))
+plot(exgr.2005.manufac.graph, vertex.color =members, main="Communities in the trade network",vertex.size=0.05*V(exgr.2005.manufac.graph)$deg.out , layout=layout_with_fr(exgr.2005.manufac.graph), vertex.label.dist = 0.5, vertex.label.cex = 0.7, edge.width = 0.2, edge.arrow.size=0.5,edge.arrow.width=0.5,edge.arrow.mode=0)
+plot(exgr.2005.manufac.graph, 
+     vertex.color = exgr.2005.manufac.graph$coreness, 
+     vertex.size=0.05*V(exgr.2005.manufac.graph)$deg.out , layout=layout_with_fr(exgr.2005.manufac.graph),  main="Max. connected subgraph (k-core)",vertex.label.dist = 0.5, vertex.label.cex = 0.7, edge.width = 0.2, edge.arrow.size=0.5,edge.arrow.width=0.5,edge.arrow.mode=0)
+```
+In the figure above we compare two approaches to identify interesting substructures in the international manufacturing trade network. 
+In the left subfigure we color coded the countries according to their communities as identified by the louvain community detection algorithm. In the right subfigure we color coded each node according to which maximum group of nodes who are connected to some number (k) of other group members. Intuitively, the idea is that a node may connected to a group if it has many ties to the members of a group. 
+
+## Analysis of the friendship network in a hungarian high school
+
+```{r initial analysis, message=FALSE, warning=FALSE, cache=T, include=FALSE}
+setwd("/Users/sergej/blog")
+#Structure 
+#1. Descriptives of network 
+#2. Gender 
+# 2.1 Descriptives (denity)
+# 2.2 
+#1.a. What are the main characteristics of the affective network at the two observations? Are they similar/different?
+#Descriptives of networks, dissimilarity with descriptives, qarp,   
+# count the different dyad types
+detachAllPackages()
+library(sna)
+library(tidyverse)
+affective_w1<-as.matrix(read.csv("7400_affective_w1.csv",  header=TRUE, row.names=1, sep=","))
+affective_w2<-as.matrix(read.csv("7400_affective_w2.csv",  header=TRUE, row.names=1, sep=","))
+sex<-as.matrix(read.csv("7400_sex.csv",  header=TRUE, row.names=1, sep=","))
+drink<-as.matrix(read.csv("7400_drink.csv",  header=TRUE, row.names=1, sep=","))
+
+# 4. Explore the data
+
+# here are some questions for guidance (you can do more)
+# it's a good idea to put the answers into objects - you will have them later
+
+
+# How many students are in the classroom?
+# (as many as rows in your data objects)
+
+class_size_w1 <-  nrow(affective_w1)
+class_size_w2 <-  nrow(affective_w2)
+
+# How many boys and girls?
+# (if only you could make a table with the frequencies and put it in an object...)
+
+#1 5 2 25
+
+gender_comp <- table(sex)
+#orginial
+affective_w1.orig<-affective_w1
+affective_w2.orig<-affective_w2
+affective_w2<-affective_w2.orig
+affective_w1<-affective_w1.orig
+sex.orig<-sex
+
+# How much missing data is in the affective network?
+# (earlier we did this by combining two functios: is.na and sum)
+# you only need to count the number of NAs in the matrix
+affect_miss_w1 <-  sum(is.na(affective_w1))
+affect_miss_w2 <-  sum(is.na(affective_w2))
+# run the next line to divide it by the number of possible ties
+# and get the proportion of missing values
+affect_miss_w1 <- affect_miss_w1 / ( nrow(affective_w1) * (ncol(affective_w1) - 1) )
+affect_miss_w2 <- affect_miss_w2 / ( nrow(affective_w2) * (ncol(affective_w2) - 1) )
+
+# W1 0.1678161 Missing values
+#W2 0.2413793 Missing values
+# (advanced users: check diag(affective_w1) and think about how we could correct the result)
+diag(affective_w1) <-0
+diag(affective_w2) <-0
+affect_miss_w1 <-  sum(is.na(affective_w1))
+affect_miss_w2 <-  sum(is.na(affective_w2))
+affect_miss_w1 <- affect_miss_w1 / ( nrow(affective_w1) * (ncol(affective_w1) - 1) )
+affect_miss_w2 <- affect_miss_w2 / ( nrow(affective_w2) * (ncol(affective_w2) - 1) )
+#1 --- 0.0001928921 nearly complete 2--- 0.0002774475
+# How many students were absent at the time of the data collection?
+# (these are the people whose rows in the affective matrix only contains NAs)
+
+#create new object which countrs the number of NA in a row
+#rows with 29 missings are missing
+
+row<-apply(affective_w1,1,function(affective_w1) sum(is.na(affective_w1)))
+row.missings<-sum(row==class_size_w1-1)
+
+row.2<-apply(affective_w2,1,function(affective_w2) sum(is.na(affective_w2)))
+row.2.missings<-sum(row.2==class_size_w2-1)
+#w1: 4 missing w2:6 missing
+absent_w1 <-sum(row==29)
+absent_w2 <-sum(row.2==29)
+names(row[row==29])
+names(row.2[row.2==29])
+
+
+
+
+# for the following questions, load the package sna if its not yet loaded
+
+
+affective_w1[affective_w1 %in% c(1,-1,-2)] <- 0
+affective_w1[affective_w1==2] <-1
+affective_w2[affective_w2 %in% c(1,-1,-2)] <- 0
+affective_w2[affective_w2==2] <-1
+# in the sna package, there are functions four counting different structural
+# configurations in a network, for example: dyads, triads, cycles, paths
+# here we try a few of these functions
+# How dense is the affective network?
+aff_dens_w1 <- sna::gden(affective_w1) #0.1525
+aff_dens_w2 <- sna::gden(affective_w2) # 0.1555
+# How many of the dyads are reciprocated?
+# (remember to specify the arguments correctly, look at ?grecip if you forgot how to)
+aff_rec_w1 <-sna::grecip(affective_w1, measure="dyadic.nonnull") #0.52
+aff_rec_w2 <-grecip(affective_w2, measure="dyadic.nonnull") #0.4
+#decreased
+# How do the in- and outdegree distributions look like in the classroom?
+# (plot them based on the previous scipt)
+# first count the degrees
+aff_ind_w1 <- sna::degree(affective_w1, cmode="indegree") # indegrees
+aff_outd_w1 <-sna::degree(affective_w1, cmode="outdegree") # outdegrees
+aff_ind_w2 <- sna::degree(affective_w2, cmode="indegree") # indegrees
+aff_outd_w2 <- sna::degree(affective_w2, cmode="outdegree") # outdegrees
+# then plot them using histograms (they don't have to look nice and don't have to be
+# combined in a single figure; but they can be)
+```
+
+```{r histogram in outdegree, message=FALSE, warning=FALSE, include=FALSE}
+par(mfrow=c(1,2))
+hist(aff_ind_w1 ,main = "Indegree Wave1", ylim=c(0,12), xlim=c(0,10),     xlab ="# Indegees")
+hist(aff_outd_w1,main = "Outdegree Wave 1", ylim=c(0,12), xlim=c(0,12),     xlab ="# Outdegees")
+```
+```{r histogram in outdegree wave2, include=FALSE}
+par(mfrow=c(1,2))
+hist(aff_ind_w2,main = "Indegree Wave 2", breaks=5,ylim=c(0,12), xlim=c(0,10),     xlab ="# Indegees")
+hist(aff_outd_w2,main = "Outdegree Wave 2", ylim=c(0,12), xlim=c(0,12),     xlab ="# Outdegees")
+```
+<!-- Evolution indegree more evenly till indegree 6  -->
+<!-- Evolution outdegree slight decreased of outdegress from 8 and 2, increse of 0 -->
+### Plot the affective network
+This section shows several plots of the affective network. Each node is a pupil and each edge represents a friendship nomination in the survey. Further,  we use colors to distinguish the nodes by gender. The color red represents the gender male and the color black represents the gender female.
+
+```{r inital plot, echo=FALSE, message=FALSE, warning=FALSE}
+par(mfrow=c(1,2))
+aff_plot_w1 <- sna::gplot(affective_w1, main="Affective network - Class 7400", vertex.col=sex)
+aff_plot_w2 <- sna::gplot(affective_w2, main="Affective network - Class 7400", vertex.col=sex)
+
+```
+<!-- ## Gender segregation -->
+```{r load igr}
+# first you need to load igraph (detach sna!)
+library(igraph)
+```
+```{r gender network calc, message=FALSE, warning=FALSE, cache=T, include=FALSE}
+# put the network into an igraph graph object
+
+
+graph_w1 <- graph.adjacency(affective_w1)
+graph_w2 <- graph.adjacency(affective_w2)
+
+sex<-as.numeric(sex)
+# choose the appropriate assortativity function for gender and use it
+# second, we asses whether there is gender homophily in affective choice
+assortativity.nominal(graph_w1, sex) #0.2063204
+assortativity.nominal(graph_w2, sex) # 0.307123 increase by 50%
+myLayout <- layout.fruchterman.reingold(graph_w1)
+myLayout.2 <- layout.fruchterman.reingold(graph_w2)
+```
+#### Plot of the affective network with igraph
+```{r igraph plot, echo=FALSE, message=FALSE, warning=FALSE}
+par(mfrow=c(1,2))
+plot(graph_w1,
+     vertex.color = ifelse(sex == 1, "red", "darkblue"),
+     vertex.shape = ifelse(sex == 1, "square", "circle"),
+     edge.color = "black",
+     edge.width = 1,
+     edge.arrow.size = 0.1,
+     vertex.size = 4,
+     vertex.label = "",
+     layout = myLayout,
+     main = "Affective network wave 1")
+
+plot(graph_w2,
+     vertex.color = ifelse(sex == 1, "red", "darkblue"),
+     vertex.shape = ifelse(sex == 1, "square", "circle"),
+     edge.color = "black",
+     edge.width = 1,
+     edge.arrow.size = 0.1,
+     vertex.size = 4,
+     vertex.label = "",
+     layout = myLayout.2,
+     main = "Affective network wave 2")
+```
+
+```{r density clustering, message=FALSE, warning=FALSE, cache=T, include=FALSE}
+gg.1 <-  affective_w1[sex==2, sex==2]
+gb.1 <-  affective_w1[sex==2, sex==1]
+bb.1 <-  affective_w1[sex==1, sex==1]
+bg.1 <-  affective_w1[sex==1, sex==2]
+
+gg.2 <-  affective_w2[sex==2, sex==2]
+gb.2 <-  affective_w2[sex==2, sex==1]
+bb.2 <-  affective_w2[sex==1, sex==1]
+bg.2 <-  affective_w2[sex==1, sex==2]
+aff.selection <- matrix(NA, 2, 2)
+rownames(aff.selection) <- c("girl", "boy")
+colnames(aff.selection) <- c("girl", "boy")
+aff.selection.2 <- matrix(NA, 2, 2)
+rownames(aff.selection.2) <- c("girl", "boy")
+colnames(aff.selection.2) <- c("girl", "boy")
+# it looks like this
+#aff.selection # rownames: sex of sender; colnames: sex of receiver
+
+# the igraph density function is quite inflexible, let's switch back to sna
+pkg <- "package:igraph"
+detach(pkg, character.only = T)
+```
+```{r load sna}
+library(sna)
+library(vioplot)
+```
+```{r ergm qap, message=FALSE, warning=FALSE, cache=T, include=FALSE}
+len=30
+
+# fill in the selection table with the subgraph densities
+# 3. affective selection table by gender
+
+
+aff.selection[1,1] <- gden(gg.1, diag=FALSE)
+aff.selection[1,2] <- gden(gb.1, diag=TRUE)
+aff.selection[2,2] <- gden(bb.1, diag=FALSE)
+aff.selection[2,1] <- gden(bg.1, diag=TRUE)
+aff.selection
+
+aff.selection.2[1,1] <- gden(gg.2, diag=FALSE)
+aff.selection.2[1,2] <- gden(gb.2, diag=TRUE)
+aff.selection.2[2,2] <- gden(bb.2, diag=FALSE)
+aff.selection.2[2,1] <- gden(bg.2, diag=TRUE)
+aff.selection.2
+
+# normalize the results
+aff.selection.norm <- aff.selection / gden(affective_w1)
+aff.selection.norm.2 <- aff.selection.2 / gden(affective_w2)
+#Simmlarity
+# The Hamming distance
+# perhaps the most simple dissimilarity or distance measure known to mankind
+# there is an sna function for calculating the Hamming distance
+?hdist # counts the number of ties that are in different states (1-0)
+(hamming <- hdist(affective_w1, affective_w2))
+# but we should probably divide this raw number by the the maximum possible distance,
+# which is when all ties are in different states
+(hamming.prop <- hamming/nties(affective_w1)) # distance proportionate to max distance
+#0.1022989 percent different 
+# The simple matching coefficient
+# a similar measure but from the point of view of similarity/stability instead of
+# distance/change
+(matching <- 1 - hamming.prop)
+#0.89
+# it seems like it is a super-stable affective network
+# however, as we saw earlier in the case of grecip, for sparse networks one will always get
+# high similarity (or low distance), because most of the ties are absent
+
+# The Jaccard index
+# a more useful measure for us: it disregards ties that are absent in both networks
+# and only considers these cases
+#                network1    network2
+#             A:    1           1
+#             B:    1           0 
+#             C:    0           1
+#            ------------------------
+# Jaccard index = A / (A + B + C)
+A <- sum((affective_w1 * affective_w2)==1, na.rm=TRUE) # #ties that exist in both networks
+BplusC <- sum((affective_w1 + affective_w2)==1, na.rm=TRUE) # #ties that exist in only one network
+(jaccard <- A/(A+BplusC))
+# this means that only a less than 40 % of the ties that
+# existed in at least one observation were stable
+# so actually, it turns out that the affective network was dynamically evolving
+
+
+### 3. CORRELATIONS BETWEEN NETWORKS - THE QUADRATIC ASSIGNMENT PROCEDURE (QAP)
+
+# functions that do QAPs for you in the sna package
+
+
+qap1 <- netlogit(affective_w2, affective_w1, nullhyp="qap", reps=1000)
+sum.qap<-summary(qap1)
+beta<-sum.qap[[1]]
+beta<-as.data.frame(beta)
+beta$exp.b<-round(exp(beta$beta),2)
+beta$beta<-round(beta$beta,2)
+beta$Prleeq <-round(sum.qap[["pleeq"]],2)
+beta$Prgrep <-round(sum.qap[["pgreq"]],2)             
+beta$Prgreqabs<-sum.qap[["pgreqabs"]]
+beta<-rbind(beta,c("","",round(sum.qap[["aic"]],2),"",""))               
+beta<-rbind(beta,c("","",round(sum.qap[["bic"]],2),"",""))               
+beta<-rbind(beta,c("","",round(sum.qap[["null.deviance"]],2),"",""))
+beta<-rbind(beta,c("","",round(sum.qap[["deviance"]],2),"",""))
+colnames(beta)<-c("$\\beta$", "$exp( \\beta )$" ,"$Pr(<=b)$" ,"$Pr(>=b)$","$Pr(>=|b|)$")
+rownames(beta)<-c("intercept","affective_w1","aic","bic","null.dev","deviance")
+#print(xtable(beta),sanitize.text.function=function(x){x}, booktabs = T)
+
+# you need to create a same sex matrix
+# help is around line 140 in the last script - the variable coding is the same, so it is easy
+same.sex <- sex.orig%*%t(sex.orig)
+same.sex[same.sex==2] <- 0
+same.sex[same.sex==4] <- 1
+
+drink.orig<-drink
+#head(drink)
+#nrow(drink)
+#drink.matrix
+#1.b. What are the relations between gender, drinking, and affective in wave 1? How do these change by wave 2?
+# seperately with ergm ,both together with saom
+# gender homophily, gender (clustering) drinking homophiliy, drinking closure (clustering) 
+
+# what is the effect of same sex on affective?
+
+# IMPORTANT: variables always have to be in matrix form!
+# so first we need to create a same sex matrix for this,
+# which contains 1 if two students have the same sex and 0 otherwise
+same.sex <- sex %*% t(sex) # %*% is matrix multiplication (not cell-wise)
+# we have a matrix that contains the values 1 (both boys), 4 (both girls), 2 (opposite sex)
+# now we only have to recode it
+same.sex[same.sex==2] <- 0
+same.sex[same.sex==4] <- 1
+drink_w1<-c(drink[,1])
+drink_w2<-c(drink[,2])
+names(drink_w1)
+drink_w1_matrix<-matrix(data=NA,nrow=30,ncol=30)
+rownames(drink_w1_matrix)<-names(drink_w1)
+colnames(drink_w1_matrix)<-names(drink_w1)
+#sender - reciever 
+for (i in 1:30) { 
+  for (j in 1:30) {
+    drink_w1_matrix[i,j]<-as.numeric(drink_w1[i])-as.numeric(drink_w1[j])
+  }
+}
+drink_w2_matrix<-matrix(data=NA,nrow=30,ncol=30)
+for (i in 1:30) { 
+  for (j in 1:30) {
+    drink_w2_matrix[i,j]<-as.numeric(drink_w2[i])-as.numeric(drink_w2[j])
+  }
+}
+#same drinking behaviour 1 different drinking behaviour 0
+drink_same_matrix<-ifelse(drink_w1_matrix!=0,0,1)
+#another hypothesis more drinking of sender has negative effect on friendship ties
+drink_more_matrix<-ifelse(drink_w1_matrix>0,1,0)
+drink_less_matrix<-ifelse(drink_w1_matrix<0,1,0)
+
+
+# run QAP (note how we need to group the x variables in a list)
+(qap3 <- netlogit(affective_w2, list(affective_w1, same.sex, drink_w1_matrix), nullhyp="qap", reps=100))
+sum.qap.2<-summary(qap3)
+beta<-sum.qap.2[[1]]
+beta<-as.data.frame(beta)
+beta$exp.b<-round(exp(beta$beta),2)
+beta$beta<-round(beta$beta,2)
+beta$Prleeq <-round(sum.qap[["pleeq"]],2)
+beta$Prgrep <-round(sum.qap[["pgreq"]],2)             
+beta$Prgreqabs<-sum.qap[["pgreqabs"]]
+beta<-rbind(beta,c("","",round(sum.qap[["aic"]],2),"",""))               
+beta<-rbind(beta,c("","",round(sum.qap[["bic"]],2),"",""))               
+beta<-rbind(beta,c("","",round(sum.qap[["null.deviance"]],2),"",""))
+beta<-rbind(beta,c("","",round(sum.qap[["deviance"]],2),"",""))
+colnames(beta)<-c("$\\beta$", "$exp( \\beta )$" ,"$Pr(<=b)$" ,"$Pr(>=b)$","$Pr(>=|b|)$")
+rownames(beta)<-c("intercept","affective_w1","same sex","drink","aic","bic","null.dev","deviance")
+#print(xtable(beta),sanitize.text.function=function(x){x}, booktabs = T)
+
+#same drinking seem to have no effect on predicting ties in affective network 2 ties controling for sex
+#small positive effect <- weird 
+(qap4 <- netlogit(affective_w2, list(affective_w1, same.sex,drink_more_matrix), nullhyp="qap", reps=100))
+sum.qap.3<-summary(qap4)
+beta<-sum.qap.3[[1]]
+beta<-as.data.frame(beta)
+beta$exp.b<-round(exp(beta$beta),2)
+beta$beta<-round(beta$beta,2)
+beta$Prleeq <-round(sum.qap[["pleeq"]],2)
+beta$Prgrep <-round(sum.qap[["pgreq"]],2)             
+beta$Prgreqabs<-sum.qap[["pgreqabs"]]
+beta<-rbind(beta,c("","",round(sum.qap[["aic"]],2),"",""))               
+beta<-rbind(beta,c("","",round(sum.qap[["bic"]],2),"",""))               
+beta<-rbind(beta,c("","",round(sum.qap[["null.deviance"]],2),"",""))
+beta<-rbind(beta,c("","",round(sum.qap[["deviance"]],2),"",""))
+colnames(beta)<-c("$\\beta$", "$exp( \\beta )$" ,"$Pr(<=b)$" ,"$Pr(>=b)$","$Pr(>=|b|)$")
+rownames(beta)<-c("intercept","affective_w1","same sex","drink","aic","bic","null.dev","deviance")
+#print(xtable(beta),sanitize.text.function=function(x){x}, booktabs = T)
+#not significant
+(qap5 <- netlogit(affective_w2, list(affective_w1, same.sex,drink_less_matrix),nullhyp="qap", reps=100))
+### Concluding remarks
+# QAP is a nice and easy technique, and as you can see it can be applied to both
+# cross-sectional and longitudinal data.
+#
+# However, in the end QAP is based on correlations between cell values, and trying to
+# include anything more complicated than the dyad (e.g. triad closure) requires quite
+# a bit of tricky data preparation. 
+
+
+#2. Which ???local rules??? are important in explaining/predicting the structure of the two affective networks (separately)?
+# ergm network structures
+
+### INSTRUCTIONS
+# 1.  Load your dataset from the RData file saved earlier.
+# 2.  Run a dyad census on the friendship network of wave 2 and save the results in an object.
+# 3.  Run a triad census on the friendship network of wave 2 and save the results in an object.
+# 4.  Generate 100 random networks with the same size (number of actors) and density as your
+#     friendship network of wave 2.
+# 5.  Plot the distribution of dyads and triads in your friendship network against those of
+#     the simulated networks.
+# X.  In case you are done with everything, load the wave 2 trust network of your classroom,
+#     repeat the exercise and try to identify the main structural similarities and differences
+#     between friendship and trust networks.
+
+### 2. DYAD, TRIAD, AND CYCLE CENSUS
+dyad.count <- sna::dyad.census(affective_w1)
+dyad.count.2 <-sna:: dyad.census(affective_w2)
+# count the different triad types
+#?triad.census
+triad.count <- sna::triad.census(affective_w1)
+
+triad.count.2 <-sna:: triad.census(affective_w2)
+#triad.count.2
+# what do these labels mean? - a short presentation slide
+
+# there is also a function that identifies the type of a dyad
+#?triad.classify
+# for example, what is the triadic relation between the first, fifth, and eigths actor?
+triad.classify(affective_w1, tri=c(5,7,0))
+triad.classify(affective_w2, tri=c(4,7,2))
+#empty triad
+#transitive triplet reciprotitive
+# count cycles of different length
+#?kcycle.census
+# it is a more delicate topic than counting dyads or triads - many possibilities
+# let's count the cycles up to length 5 (don't go to high or it will take forever)
+#kcycle.census(affective_w1, maxlen=5)
+#kcycle.census(affective_w2, maxlen=5)
+# oops, apparently the function does not like our absent students,
+# so we have to remove them
+# we do it in a new object in order not to ruin our original data
+colnames(affective_w1)<-gsub("X","",colnames(affective_w1))
+colnames(affective_w2)<-gsub("X","",colnames(affective_w2))
+library(Hmisc)
+temp <- affective_w1[row.names(affective_w1) %nin% c("7408","7412","7419","7425"), colnames(affective_w1) %nin% c("7408","7412","7419","7425")]
+missing.names.2<-names(row.2[row.2==29])
+temp.2 <- affective_w2[row.names(affective_w2) %nin% c(missing.names.2), colnames(affective_w2) %nin% missing.names.2]
+# excluding rows and columns with the "-" sign
+# and now it should work
+cycles.w1<-kcycle.census(temp, maxlen=5, tabulate.by.vertex=FALSE)
+#na replace with 0 else kcycle fails
+temp.2<-ifelse(is.na(temp.2),0,temp.2)
+cycles.w2<-kcycle.census(temp.2, maxlen=5, tabulate.by.vertex=FALSE)
+# 4. Generate 100 random networks wit the same size and density as the friendship network
+
+# you need to get the size and the density
+aff1_size <- nrow(affective_w1)
+aff1_dens <- gden(affective_w1)
+aff2_size <- nrow(affective_w2)
+aff2_dens <- gden(affective_w2)
+# and use them as parameters when you generate the networks
+### Bernoulli Random Graphs
+# What are they?
+# Tie values are drawn from a Bernoulli/binary distribution with success probability p.
+# For example, if p=0.5 then there is a fifty-fifty chance that a tie is present in the
+# network.
+# Key features of Bernoulli Random Graphs:
+# Ties are independent: whether a tie is present or not does not alter the probability
+# of another tie being present.
+# The expected value of the density of the graph is p.
+###
+
+
+# 4. TESTING THE TRIAD CENSUS AGAINST RANDOM NETWORKS
+
+# here are the results from the triad census in the friendship network again
+#triad.count
+#triad.count.2
+# how do should we interpret these numbers? are they high? are they low?
+# answer: it depends
+# for example on the number of actors - many actors means many possible triads
+# or on the density of the network - there are many empty triads in a sparse network
+
+# a natural way to interpret the triad census is by comparing the observed number of
+# the different triads to the numbers we would see in a SIMILAR NETWORK in which ties
+# are RANDOMLY PRESENT or absent
+
+# we have already discussed what RANDOMLY PRESENT means
+# but what is a SIMILAR NETWORK?
+# networks can be similar or different in many ways, so it is up to you to decide
+# what are the important aspects
+# the most simple assumption is that two networks are similar if they have the
+# same number of actors and the same density
+# let's simulate 200 similar random networks
+random.nets <- sna::rgraph(aff1_size, 200, aff1_dens)
+random.nets.2 <- sna::rgraph(aff2_size, 200, aff2_dens)
+#gden(random.graph) # density probably close to the expected value (0.1)
+```
+We use random graphs with the same density to analyze the friendship (affective) class network. 
+```{r sim random graph, echo=FALSE, message=FALSE, warning=FALSE, cache=T}
+random.nets <- sna::rgraph(aff1_size, 200, aff1_dens)
+random.nets.2 <- sna::rgraph(aff2_size, 200, aff2_dens)
+```
+
+```{r hist random density, message=FALSE, warning=FALSE, include=FALSE}
+#are the densities really distribute around the density of the friendship network?
+random.dens <- gden(random.nets)
+random.dens.2 <- gden(random.nets.2)
+m.rand.dens<-mean(random.dens)
+m.rand.dens2<-mean(random.dens.2)
+par(mfrow=c(1,2))
+hist(random.dens,xlab='Density',title='Random network density W1')
+hist(random.dens.2, xlab='Density',title='Random network density W2')
+```
+```{r vis random network}
+# how does the result look like
+#dim(random.nets)
+# it's a 200*160*160 array - this means that the simulated networks are
+# identified by the first dimension
+par(mfrow=c(1,2))
+gplot(random.nets[1,,]) # this is the first random network
+gplot(random.nets[2,,]) # this is the second
+```
+The figure above displays the simulated random networks. The left subfigure is the simulated network from wave 1. The right subfigure is the simulated network from wave 2.
+
+### Comapring the random networks to the simulated networks
+```{r plot random graph, echo=FALSE, message=FALSE, warning=FALSE}
+par(mfrow=c(1,2))
+gplot(affective_w1)
+gplot(random.nets) # looks quite homogeneous, maybe too much
+```
+The figure above shows the real and the simulated random network for wave 1. The left subfigure displays the real network in wave 1.  The right subfigure displays the simulated random network in wave 1.
+```{r plot random graph2, echo=TRUE, message=FALSE, warning=FALSE}
+par(mfrow=c(1,2))
+gplot(affective_w2)
+gplot(random.nets.2) # looks quite homogeneous, maybe too much
+```
+The figure above shows the real and the simulated random network for wave 2. The left subfigure displays the real network in wave 2.  The right subfigure displays the simulated random network in wave 2.
+```{r plot random graph degree, include=FALSE}
+par(mfrow=c(2,2))
+hist(sna::degree(random.nets, cmode="indegree"), main="Indegee random graph")
+hist(sna::degree(affective_w1, cmode="indegree"), main="Indegee affective graph 1")
+hist(sna::degree(random.nets, cmode="outdegree"),main="Outdegee random graph") # these are a bit different from what we usually see
+hist(sna::degree(affective_w1, cmode="outdegree"), main="Outdegee affective graph 1")
+```
+
+
+```{r random triad,}
+#aff1_dens
+#aff2_dens
+# it seems so. good. it would be even better with more random networks
+
+# to compare the observed triad counts to the simulated ones,
+# we need to run the triad census on all 200 random networks
+random.triad <- sna::triad.census(random.nets)
+random.triad.2 <- sna::triad.census(random.nets.2)
+# it takes a bit of time...
+# what is the result?
+#class(random.triad) # a matrix
+#dim(random.triad) # containing count for the 16 triads (columns) in each network (rows)
+
+
+
+# the plotting function we use has the same name as the package
+#?vioplot
+```
+
+
+```{r violin plot, message=FALSE, warning=FALSE, include=FALSE}
+vioplot(random.triad[,9],                 # the distribution
+        names=colnames(random.triad)[9],  # name of the triad type
+        col="transparent",                # let the "violin" be transparent
+        ylim=c(0, 100))                    # displayed part of the y axis
+# compared to this, where is the number that we actually observed in the friendship networs?
+# we add the observed value as a point to the plot
+points(1, triad.count[9],                 # x and y coordinates for the added point
+       col="red",                         # color of point
+       pch=15)                            # shape of point: solid rectangle
+```
+#### Closed Triangles
+
+The next figure compares the distribution of all closed triangles in the random network to the real network using violinplots. <br> 
+The violinplot combines the box plot with a density plot. It thus display the complete data distribution. <br> 
+Further, a word about why we display closed triangels.
+Closed triangles are interesting because they measure the extend that a friend of my friend is also my friend. <br>
+The violinplot below shows the distribution of the closed triangels in the simulated random network.
+```{r violinplot closed triangled, echo=FALSE, message=FALSE, warning=FALSE}
+# now we plot the distribution of all closed triangles (in a quite primitive way)
+vioplot(random.triad[,9], random.triad[,10], random.triad[,12],
+        random.triad[,13], random.triad[,14], random.triad[,15], 0,
+        names=colnames(random.triad)[c(9,10,12,13,14,15,16)],
+        col="transparent")
+# and mark the observed numbers in each category
+points(1:7,
+       triad.count[c(9,10,12,13,14,15,16)],
+       col="red",
+       type="b",
+       pch=15)
+# quite different to random graph, hence structures seem to be non random
+```
+Overall, the figure shows substaintial differences between the real network (red dots) and the simulated network. This approach is of comparing the real network to a simulated random network is similar to a null hypothesis test. The takeaway is that the real network is unlikely to be random.
+
+#### Dyad and triad distribution
+
+A short explanation about dyads.  
+A dyad is a subnetwork of only two nodes. There are three relevant states for each dyad. Mutual dyads describe in our context that two pupils nominated each other as a friend. Asym. dyads describes here that only one pupil named the other one as a friend. A nully dyad describes that both pupils did not nominate each other as a friend.
+
+```{r dyadic tryadic census random network, message=FALSE, warning=TRUE, include=FALSE, cache=T}
+# first you need to repeat steps 2 and 3 for the simulated networks.
+simaffect_dyad<-sna::dyad.census(random.nets)
+simaffect2_dyad<-sna::dyad.census(random.nets.2)
+simaffect_triad<-sna::triad.census(random.nets)
+simaffect2_triad<-sna::triad.census(random.nets.2)
+```
+
+```{r violin sim real network dyad}
+vioplot(simaffect_dyad[,1], simaffect_dyad[,2],simaffect_dyad[,3], names=colnames(simaffect_dyad) )
+points(1:3,
+       dyad.count[c(1,2,3)],
+       col="red",
+       type="b",
+       pch=15)
+```
+
+```{r violin sim real network dyad w2}
+#more mutual and (alot) less asym and null dyads than in random
+vioplot(simaffect2_dyad[,1], simaffect2_dyad[,2],simaffect2_dyad[,3], names=colnames(simaffect2_dyad) )
+points(1:3,
+       dyad.count.2[c(1,2,3)],
+       col="red",
+       type="b",
+       pch=15)
+```
+The figures above compare the dyad distribution of the simulated random network to the real network.  
+In short the figure shows that the wave 2 friendship network has more mutual and (alot) less asym and null dyads than in the random network. The takeaway is that the real network is unlikely to be random. 
+
+```{r load statnet, message=FALSE, warning=FALSE, include=FALSE}
+#detach(package:igraph,unload = TRUE)
+library(tergm)
+library(ergm)
+library(sna)
+library(ergm.count)
+library(networkDynamic)
+#library(statnet)
+```
+```{r fit ergm, message=FALSE, warning=FALSE, cache=T, include=FALSE}
+### OVERVIEW
+# You will work on your RECENS classroom again. Your task is to build ERGMs
+# that model clustering and homophily by gender. Then you need to assess the GOF, too.
+###
+
+
+# 2.  Build up an ERGM for friendship w1 step by step including the following effects
+#                       edges
+#                       mutuality/reciprocity
+#                       clustering/transitivity
+#                       sender, receiver, and homophily effects for gender
+friendship_w1 <- affective_w1 # first put the original network into a friend object
+friendship_w2 <- affective_w2
+# to make things more simple, we should use objects of class "network"
+friend1 <- network(friendship_w1)
+friend2 <- network(friendship_w2)
+# you can add vertex/node/actor attributes to a network object by
+# using the %v% operator
+
+friend2 %v% "drinking" <- as.numeric(drink_w2)
+
+friend2 %v% "sex" <- as.numeric(sex.orig)
+
+friend1 %v% "drinking" <- as.numeric(drink_w1)
+
+friend1 %v% "sex" <- as.numeric(sex.orig)
+
+# 4. Assess the convergence of the full models.
+### 6. STRUCTURAL AND COVARIATE EFFECTS
+
+# reciprocity is a universal tendency in friendships - include it in the model
+#ergm2 <- ergm(friend1~edges+mutual)
+#ergm3 <- ergm(friend2~edges+mutual)
+# the estimation looks more serious now
+# some parts of it are done in C which communicates with R - :-O (shocked face)
+# interested in how the algorithm works? check ?ergm
+
+# a useful option, good for debugging bad models:
+# use the verbose=TRUE argument to get more feedback about the estimation
+# ergm2 <- ergm(friend1~edges+mutual, verbose=TRUE)
+# 
+# # now look at the results
+# ergm.edge.mutal.w1<-summary(ergm2)
+# ergm.edge.mutal.w2<-summary(ergm3)
+# # MINITASK: How can you interpret the reciprocity parameter?
+
+# how about clustering?
+ergm3 <- ergm(friend1~edges+mutual+gwesp(decay=0, fixed=TRUE))
+ergm4 <- ergm(friend2~edges+mutual+gwesp(decay=0, fixed=TRUE))
+#summary(ergm3)
+#summary(ergm4)
+#marginal effectsby hand
+# this took more time... did the estimation converge?
+#mcmc.diagnostics(ergm4)
+# quite well; in case you see the trace plots going up, down or oscillating,
+# you can continue the estimation starting from where you left off
+ergm3b <- ergm(friend1~edges+mutual+gwesp(0, fixed=T), control=control.ergm(init=ergm3$coef))
+ergm4b <- ergm(friend2~edges+mutual+gwesp(0, fixed=T), control=control.ergm(init=ergm4$coef))
+#mcmc.diagnostics(ergm3b)
+#mcmc.diagnostics(ergm4b)
+# this is probably better
+# watch out: if your model is stuck in a local trap (degeneracy), continuing the estimation
+# might make things worse and worse by every run...
+
+# look at the results
+#summary(ergm3b)
+#summary(ergm4b)
+# but what does 'gwesp.fixed.0' mean? clustering
+#source: Using Exponential Random Graph Models to Investigate Adolescent Social Networks 
+#The GWESP statistic defines a parametric form of this count distribution that gives
+#each additional shared partner a declining positive impact on the probability of two persons forming a tie
+#triad closure
+# what are the potential confounding factors causing clustering?
+ergm5 <- ergm(friend1~edges+mutual+gwesp(0, fixed=T)+istar(2)+ostar(2)+m2star)
+#mcmc.diagnostics(ergm5)
+ergm5b<-ergm(friend1~edges+mutual+gwesp(0, fixed=T)+istar(2)+ostar(2)+m2star, control=control.ergm(init=ergm5$coef))
+#mcmc.diagnostics(ergm5b)
+#summary(ergm5b)
+```
+
+```{r ergm dont fit,  message=FALSE, warning=FALSE, cache=T, include=FALSE}
+ergm6 <- ergm(friend2~edges+mutual+gwesp(0, fixed=T)+istar(2)+ostar(2)+m2star)
+ergm6b <- ergm(friend2~edges+mutual+gwesp(0, fixed=T)+istar(2)+ostar(2)+m2star,control=control.ergm(init=ergm6$coef))
+```
+```{r ergm dont fit2, eval=FALSE, message=FALSE, warning=FALSE, cache=T, include=FALSE}
+#Snijders et al. (2006) and Robins et al. (2007) provided interpretations of the associated parameter: 
+#a positive estimate is evidence that the network contains a skewed degree distribution with some higher degree nodes,
+#whereas a negative parameter suggests that
+#mcmc.diagnostics(ergm6b)
+#summary(ergm6b)
+
+#m2star counting the cases a node has incoming and outgoing ties.
+#istar
+#fit both with ist ostar model and without
+ergm7 <- ergm(friend1~edges+mutual+gwesp(0, fixed=T)+istar(2)+ostar(2)+m2star+
+                nodematch("sex"))
+
+
+ergm10 <- ergm(friend2~edges+mutual+gwesp(0, fixed=T)+istar(2)+ostar(2)+m2star+
+                nodematch("sex"))
+
+
+ergm11<-ergm(friend2~edges+mutual+gwesp(0, fixed=T)  +m2star+
+       nodematch("sex") )
+ergm11b<-ergm(friend2~edges+mutual+gwesp(0, fixed=T)  +m2star+
+               nodematch("sex") , control=control.ergm(init=ergm11$coef))
+
+#mcmc.diagnostics(ergm11b)
+
+ergm8 <- ergm(friend1~edges+mutual+gwesp(0, fixed=T)+istar(2)+ostar(2)+m2star+
+                nodematch("sex")+nodematch("drinking"))
+#doenst converge
+# ergm9 <- ergm(friend2~edges+mutual+gwesp(0, fixed=T)+istar(2)+ostar(2)+m2star+
+#                 nodematch("sex")+nodematch("drinking"))
+# ergm9b <- ergm(friend2~edges+mutual+gwesp(0, fixed=T)+istar(2)+ostar(2)+m2star+
+#                 nodematch("sex")+nodematch("drinking"), contol=control.ergm(init=ergm9$coef))
+
+
+
+# print the gof plots to pdf's
+#xaxis possible indegree
+#yaxis proportion with as many 
+#if solid line within the dashed line of the simulted values
+#focus on all different measures
+# pdf("ergm1_gof.pdf")
+# plot(ergm1_gof)
+# dev.off()
+# 
+# pdf("ergm4_gof.pdf")
+# plot(ergm4_gof)
+# dev.off()
+# 
+# pdf("ergm6_gof.pdf")
+# plot(ergm6_gof)
+# dev.off()
+
+# let's inspect the results
+
+
+
+```
+```{r imp drink, cache=T}
+### 8. SIMULATING NETWORKS FROM AN ERGM MODEL
+
+# the last topic in this basic intro to the statnet package
+# is about simulating random networks from a model that you
+# estimated using the ergm function
+
+# mean imputation therefore SE will be downward biased, but we cant think of an good imputation model to generate multiple imputations
+drink_mean_imp_w1<-drink_w1
+for (i in 1:length(drink_w1)) { 
+  if( is.na(drink_w1[i])) { 
+  drink_mean_imp_w1[i]<-round(mean(drink_w1, na.rm=T),0)
+  } 
+  else { 
+    drink_mean_imp_w1[i]<-drink_w1[i]
+    }
+}
+drink_mean_imp_w2<-drink_w2
+for (i in 1:length(drink_w2)) { 
+  if( is.na(drink_w2[i])) { 
+    drink_mean_imp_w2[i]<-round(mean(drink_w2, na.rm=T),0)
+  } 
+  else { 
+    drink_mean_imp_w2[i]<-drink_w2[i]
+  }
+}
+drink.alot<-ifelse(drink_mean_imp_w2>3,1,0)
+friend1 %v% "mean_imp_drink"<- as.numeric(drink_mean_imp_w1)
+friend2 %v% "mean_imp_drink"<- as.numeric(drink_mean_imp_w2)
+friend2 %v% "drink.alot"<-as.numeric(drink.alot)
+# ergm12 <- ergm(friend1~edges+mutual+gwesp(0, fixed=T)+istar(2)+ostar(2)+m2star+
+#                  nodematch("sex")+nodematch("mean_imp_drink"))
+# ergm13 <- ergm(friend2~edges+mutual+gwesp(0, fixed=T)+istar(2)+ostar(2)+m2star+
+#                  nodematch("sex")+nodematch("mean_imp_drink"))
+# ergm13b <- ergm(friend2~edges+mutual+gwesp(0, fixed=T)+istar(2)+ostar(2)+m2star+
+#                  nodematch("sex")+nodematch("mean_imp_drink"),contol=control.ergm(init=ergm13$coef))
+# 
+# ergm15 <- ergm(friend1~edges+mutual+gwesp(0, fixed=T)+istar(2)+ostar(2)+m2star+
+#                  nodematch("sex"))
+# ergm16 <- ergm(friend2~edges+mutual+gwesp(0, fixed=T)+istar(2)+ostar(2)+m2star+
+#                  nodematch("sex"))
+# 
+# ergm16 <- ergm(friend2~edges+mutual+gwesp(0, fixed=T)+istar(2)+ostar(2)+m2star+
+#                  nodematch("sex"),control=control.ergm(init=ergm16$coef))
+# #doesnt converge
+# # ergm13 <- ergm(friend2~edges+mutual+gwesp(0, fixed=T)+istar(2)+ostar(2)+m2star+
+# #                  nodematch("sex")+nodecov("drink.alot"))
+# # 
+# # ergm14 <- ergm(friend2~edges+mutual+gwesp(0, fixed=T)+istar(2)+ostar(2)+m2star+
+# #                  nodematch("sex")+nodematch("drink.alot"))
+# 
+# 
+# 
+# #clustering no star
+# gof_ergm3b<-ergm::gof(ergm3b)
+# gof_ergm4b<-ergm::gof(ergm4b)
+# #clustering star
+# gof_ergm5b<-ergm::gof(ergm5b)
+# gof_ergm6b<-ergm::gof(ergm6b)
+#last model with sex
+```
+
+### Exponential random graph models
+
+In this part we estimated an expontential random graph model (ERGM). In short the ERGM is an extension of the logistic regression to the case of networks. <br>
+The ERGM model predicts the presence of edges on the basis of covariates, as e.g. are there more boys than girls, and network structures as e.g. transitivity. <br>
+In the following present two visualisations comparing the fit of the estimated ERGM model to the real friendship network using simulations. 
+
+```{r sim ergm, cache=T}
+# it is also very easy (technically speaking)
+#?simulate # note that this function comes with the stat package - not ergm-specific!
+mynets <- simulate(ergm5b, 100) # simulates 10 networks from model 10
+#mynets
+# first you need to repeat steps 2 and 3 for the simulated networks.
+simnets_dyad_ergm<-sna::dyad.census(mynets)
+
+simnets_triad_ergm<-sna::triad.census(mynets)
+```
+
+#### ERGM closed triangles
+
+Below we compare the distribution of all closed triangles from 100 simulations of the fitted ERGM model to the real network.
+
+```{r plot sim ergm real network closed triangle}
+# now we plot the distribution of all closed triangles (in a quite primitive way)
+vioplot(simnets_triad_ergm[,9], simnets_triad_ergm[,10], simnets_triad_ergm[,12],
+        simnets_triad_ergm[,13], simnets_triad_ergm[,14], simnets_triad_ergm[,15],simnets_triad_ergm[,16],
+        names=colnames(simnets_triad_ergm)[c(9,10,12,13,14,15,16)],
+        col="transparent")
+# and mark the observed numbers in each category
+points(1:7,
+       triad.count[c(9,10,12,13,14,15,16)],
+       col="red",
+       type="b",
+       pch=15)
+```
+Overall, the figure shows a that our model fits reasonably well the distribution of closed triangles. The red squares are all quite reasonably in line with the simulated values display in the violplots. 
+
+### ERGM dyad and triad distribution
+
+```{r plot sim ergm real network dyad}
+# 5. Plot the dyad and triad distributions in a violinplot
+vioplot(simnets_dyad_ergm[,1], simnets_dyad_ergm[,2],simnets_dyad_ergm[,3], names=colnames(simnets_dyad_ergm) )
+points(1:3,
+       dyad.count[c(1,2,3)],
+       col="red",
+       type="b",
+       pch=15)
+
+```
+
+Next, I visually inspect the models predictions for the dyad distributions. Overall, it is encouraging to see that our model fits the mutual dyads and the asynm. dyads reasonably well. However, our model predicts too many null dyads compared to the real network.
+
+```{r ergm sim wave2, eval=FALSE, message=FALSE, warning=FALSE, include=FALSE}
+### wave 2 #########
+mynets <- simulate(ergm6b, 100) # simulates 10 networks from model 10
+mynets
+# first you need to repeat steps 2 and 3 for the simulated networks.
+simnets_dyad_ergm<-sna::dyad.census(mynets)
+
+simnets_triad_ergm<-triad.census(mynets)
+
+layout(matrix(c(1,1,2,3), 2, 2, byrow = TRUE))
+# now we plot the distribution of all closed triangles (in a quite primitive way)
+vioplot(simnets_triad_ergm[,9], simnets_triad_ergm[,10], simnets_triad_ergm[,12],
+        simnets_triad_ergm[,13], simnets_triad_ergm[,14], simnets_triad_ergm[,15],simnets_triad_ergm[,16],
+        names=colnames(simnets_triad_ergm)[c(9,10,12,13,14,15,16)],
+        col="transparent")
+# and mark the observed numbers in each category
+points(1:7,
+       triad.count.2[c(9,10,12,13,14,15,16)],
+       col="red",
+       type="b",
+       pch=15)
+
+# quite different to random graph, hence structures seem to be non random
+
+# 5. Plot the dyad and triad distributions in a violinplot
+vioplot(simnets_dyad_ergm[,1], simnets_dyad_ergm[,2],simnets_dyad_ergm[,3], names=colnames(simnets_dyad_ergm) )
+points(1:3,
+       dyad.count.2[c(1,2,3)],
+       col="red",
+       type="b",
+       pch=15)
+#more mutual and (alot) less asym and null dyads than in random
+vioplot(simnets_triad_ergm[,1],simnets_triad_ergm[,2],simnets_triad_ergm[,3], names=colnames(simaffect2_dyad) )
+points(1:3,
+       triad.count.2[c(1,2,3)],
+       col="red",
+       type="b",
+       pch=15)
+save.image('network_ass.Rdata')
+```
+
+```{r ergm diagnostics, eval=FALSE, message=FALSE, warning=FALSE, include=FALSE}
+#drinking not significant neither as covariate nor as match
+mcmc.diagnostics(ergm13)
+#nodematch persons with same sex more likely to connect
+mcmc.diagnostics(ergm7)
+mcmc.diagnostics(ergm8)
+mcmc.diagnostics(ergm9b)
+
+summary(ergm7)
+summary(ergm8)
+summary(ergm9)
+summary(ergm10)
+```
+
+
+
+
+
+```{r detach load packages, eval=FALSE, include=FALSE}
+# now that all data is loaded into R, we can 
+# construct the type of data that RSiena understands
+#detach(package:statnet)
+detach(package:ergm.count)
+detach(package:tergm)
+detach(package:ergm)
+
+detach(package:networkDynamic)
+detach(package:sna)
+detach(package:network)
+
+# create the longitudinal network object
+library(igraph)
+#?sienaDependent
+#sienna
+library(RSiena)
+```
+```{r SAOM, eval=FALSE, message=FALSE, warning=FALSE, include=FALSE}
+######### Step 2: Create the RSiena objects #########
+nActors <- dim(affective_w1)[1]
+myNetwork <- sienaDependent( array( c(affective_w1, affective_w2 ), 
+                                    dim = c(nActors, nActors, 2 ) ) )
+
+
+
+# create constant actor covariates
+gender.coCovar <- coCovar(as.numeric(sex))
+
+# create the varying dyadic covariate
+drink.mean.imp<-ifelse(is.na(drink),round(mean(drink,na.rm=T),0),drink)
+#drinking can be only included as constant variable as we have only two waves
+drink.mean.imp<-rowSums(drink.mean.imp)/2
+
+drink.covar<-coCovar(drink.mean.imp)
+
+# now create an object that includes all the information necessary for a Siena analysis
+
+#?sienaDataCreate
+myData <- sienaDataCreate(myNetwork, gender.coCovar, drink.covar) 
+
+# Including the third observation of the dyadic covariate (distance) would have
+# returned an error when calling sienaDataCreate:
+#                 Error in dyvCovars[[i]][, 1:(observations - 1)] : 
+#                   incorrect number of dimensions
+# It is because sienaDataCreate expects 2 observations for the varying covariate:
+# covariates are not modeled, and their state in t3 is irrelevant for estimation.
+
+# print report to check
+#print01Report(myData, modelname="Mannheim_7400")
+
+
+######### Step 3: Specify a model #########
+
+# create an effects object for the created data
+
+#?getEffects
+myEff <- getEffects(myData)
+
+#look at your effects object
+
+#myEff
+#names(myEff)
+
+# see all the short names of available effects
+#myEff$effectName
+#myEff$shortName
+
+# a more civilized list
+#effectsDocumentation(myEff)
+
+# include the structural effects
+#?includeEffects
+myEff <- includeEffects(myEff, transTrip)
+myEff <- includeEffects(myEff, cycle3, transRecTrip,  inActSqrt, outActSqrt)
+# include covariate related effects
+
+myEff <- includeEffects(myEff, inPop)
+
+# homophily effects and ego alter control
+myEff <- includeEffects(myEff, egoX, altX, sameX, interaction1="gender.coCovar")
+myEff <- includeEffects(myEff, egoX, altX, simX, interaction1="drink.covar")
+
+myModel <- sienaAlgorithmCreate(useStdInits=FALSE, projname="My Model")
+#initial parameter values from previous research included
+# Print a report to a file that includes all important information on the data and model you specified
+
+#print01Report(myData, modelname="My Model")
+
+# Now, finally, we can actually run the model
+
+
+######### Step 5: Estimate #########
+```
+<!-- In this section I estimated a stochastic actor oriented model (SAOM). The firt difference to the previous logistic model t is that the SAOM first is a dynamic. It focuses on the formation of ties by nodes. Second the focus lies on the attributes of the nodes and how these predict the change of ties.   -->
+```{r result SAOM, eval=FALSE, message=FALSE, warning=FALSE, cache=T, include=FALSE}
+myAnswer.mannheim <- RSiena::siena07(myModel, data = myData, effects = myEff, returnDeps = T)
+#returnDeps returns simulation results
+#myAnswer.mannheim
+```
+
+```{r more results SAOM, eval=FALSE, message=FALSE, warning=FALSE, include=FALSE}
+# if convergence is not satisfying or we have a model that takes long to
+# get to the proper values, we can run again with new starting values
+
+myAnswer.mannheim <- RSiena::siena07(myModel, data = myData, effects = myEff, returnDeps = T,
+                             prevAns=myAnswer.mannheim, # start with previous results
+                             useCluster=TRUE, nbrNodes=4) 
+
+
+siena.table(myAnswer.mannheim,
+            type="tex",
+            file="Mannheim_result.tex",
+            tstatPrint=TRUE,
+            sig=TRUE,
+            d=2)
+
+# All results are also saved in the file "My Model.out" in the working directory
+# check the t-ratios for convergence!!!
+# only then proceed to looking at the results
+
+
+
+######## Ego-alter selection tables #######
+
+# We have estimated the model and got the parameters expressing gender homophily
+# So, is it more or less likely that a girl nominates another girl as a friend
+# than for a boy to nominate a boy as a friend?
+
+# An ego-alter selection table is nice represenation of the results
+# (see section 13.3 of the RSiena Manual for further information)
+
+# LET'S LOOK AT SOME SLIDES
+# ...
+
+# having done that, look at the first few values of the gender variable in the
+# Siena data object
+
+myData$cCovars$gender.coCova[1:10]
+
+# here is the mean on which the centering is based
+
+attr(myData$cCovars$gender.coCova, "mean")
+
+# Note: you can tell RSiena not to center covariates:
+# when you define a covariate, use the "centered=FALSE" argument
+# (in the functions coCovar, varCovar, coDyadCovar, varDyadCovar)
+# but it is advised to center them.
+
+# Now, with the parameter estimates and the mean of the gender variable,
+# we can easily do the selection table for sex covariate effects.
+
+#4. State one hypothesis about other micro mechanisms which you could test with the learnt methods.
+```

@@ -1,0 +1,19 @@
+VAR;Indicator;COU;Country;PAR;Partner;IND;Industry;TIME;Time;Value
+EXGRDVA;Domestic value added embodied in gross exports;EST;Estonia;TOTAL;Total;01T05;Agriculture, hunting, forestry and fishing;2009;2009;390,2
+EXGRDVA;Domestic value added embodied in gross exports;EST;Estonia;TOTAL;Total;10T14;Mining and quarrying;2009;2009;47,4
+EXGRDVA;Domestic value added embodied in gross exports;EST;Estonia;TOTAL;Total;15T16;Food products, beverages and tobacco;2009;2009;644,7
+EXGRDVA;Domestic value added embodied in gross exports;EST;Estonia;TOTAL;Total;17T19;Textiles, textile products, leather and footwear;2009;2009;342,4
+EXGRDVA;Domestic value added embodied in gross exports;EST;Estonia;TOTAL;Total;20T22;Wood, paper, paper products, printing and publishing;2009;2009;891
+EXGRDVA;Domestic value added embodied in gross exports;EST;Estonia;TOTAL;Total;23T26;Chemicals and non-metallic mineral products;2009;2009;706,6
+EXGRDVA;Domestic value added embodied in gross exports;EST;Estonia;TOTAL;Total;27T28;Basic metals and fabricated metal products;2009;2009;405
+EXGRDVA;Domestic value added embodied in gross exports;EST;Estonia;TOTAL;Total;29;Machinery and equipment, nec ;2009;2009;206,6
+EXGRDVA;Domestic value added embodied in gross exports;EST;Estonia;TOTAL;Total;30T33;Electrical and optical equipment;2009;2009;634,8
+EXGRDVA;Domestic value added embodied in gross exports;EST;Estonia;TOTAL;Total;34T35;Transport equipment;2009;2009;171,5
+EXGRDVA;Domestic value added embodied in gross exports;EST;Estonia;TOTAL;Total;36T37;"Manufacturing nec; recycling ";2009;2009;342,6
+EXGRDVA;Domestic value added embodied in gross exports;EST;Estonia;TOTAL;Total;40T41;Electricity, gas and water supply;2009;2009;243,2
+EXGRDVA;Domestic value added embodied in gross exports;EST;Estonia;TOTAL;Total;45;Construction;2009;2009;196,3
+EXGRDVA;Domestic value added embodied in gross exports;EST;Estonia;TOTAL;Total;50T55;"Wholesale and retail trade; Hotels and restaurants";2009;2009;270,8
+EXGRDVA;Domestic value added embodied in gross exports;EST;Estonia;TOTAL;Total;60T64;Transport and storage, post and telecommunication;2009;2009;1553,2
+EXGRDVA;Domestic value added embodied in gross exports;EST;Estonia;TOTAL;Total;65T67;Financial intermediation;2009;2009;208,5
+EXGRDVA;Domestic value added embodied in gross exports;EST;Estonia;TOTAL;Total;70T74;Business services;2009;2009;634,1
+EXGRDVA;Domestic value added embodied in gross exports;EST;Estonia;TOTAL;Total;75T95;Other services;2009;2009;78,8

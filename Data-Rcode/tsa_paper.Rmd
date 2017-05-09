@@ -1,0 +1,464 @@
+---
+title: "Excerpts from time series analysis assignment"
+author: "Sergej Kaiser"
+date: "05/05/2017"
+output:
+  html_document: default
+html_notebook: default
+css: markdown7.css
+---
+## Overview
+
+In the following document I present an excerpt from the assignment for the course 'Adv. Time Series Analysis'. The anlysis is split into two parts: univariate analysis and multivariate analysis. 
+In the univariate analysis I fitted an AR, MA and ARMA model to the time series of the adjusted closing prices of Bayer and BASF AG from 2002 till 2016. Further, I estimated an ARCH and GARCH model to take into account non-constant variance of both time series. <br>
+In the multivariate part I analyse the comovement of both shares jointly using an extension of the GARCH model.
+
+## Univariate Analysis 
+
+### Descriptive analysis
+```{r, include=FALSE}
+require(knitr)
+lapply(c("pastecs",
+"quantmod",
+"urca", 
+"fBasics",
+"rugarch",
+"rmgarch",
+"fGarch",
+"texreg",
+"tseries",
+"ggplot2",
+"CADFtest"),require,character.only=T)
+
+ #options(width = 100,  warn=-1, width.cutoff=140)
+
+  opts_chunk$set(warning=FALSE, 
+                 message=FALSE, 
+                 echo=FALSE, 
+                 dpi=96,
+                 fig.width=12, fig.height=8, # Default figure widths
+                 dev="png", dev.args=list(type="cairo"), # The png device
+                 # Change to dev="postscript" if you want the EPS-files
+                 # for submitting. Also remove the dev.args() as the postscript
+                 # doesn't accept the type="cairo" argument.
+                 error=FALSE)
+
+getSymbols("BAS.DE",src="yahoo",from="2002-01-02", to="2016-12-27",  auto.assign = T)
+getSymbols("BAYN.DE",src="yahoo",from="2002-01-02", to="2016-12-27", auto.assign = T)
+ 
+basf <- BAS.DE$BAS.DE.Adjusted
+bayer <- BAYN.DE$BAYN.DE.Adjusted
+multiplot <- function(..., plotlist=NULL, file, cols=1, layout=NULL) {
+  library(grid)
+
+  # Make a list from the ... arguments and plotlist
+  plots <- c(list(...), plotlist)
+
+  numPlots = length(plots)
+
+  # If layout is NULL, then use 'cols' to determine layout
+  if (is.null(layout)) {
+    # Make the panel
+    # ncol: Number of columns of plots
+    # nrow: Number of rows needed, calculated from # of cols
+    layout <- matrix(seq(1, cols * ceiling(numPlots/cols)),
+                    ncol = cols, nrow = ceiling(numPlots/cols))
+  }
+
+ if (numPlots==1) {
+    print(plots[[1]])
+
+  } else {
+    # Set up the page
+    grid.newpage()
+    pushViewport(viewport(layout = grid.layout(nrow(layout), ncol(layout))))
+
+    # Make each plot, in the correct location
+    for (i in 1:numPlots) {
+      # Get the i,j matrix positions of the regions that contain this subplot
+      matchidx <- as.data.frame(which(layout == i, arr.ind = TRUE))
+
+      print(plots[[i]], vp = viewport(layout.pos.row = matchidx$row,
+                                      layout.pos.col = matchidx$col))
+    }
+  }
+}
+```
+```{r plot}
+basf.plot<-fortify(basf)
+bayer.plot<-fortify(bayer)
+plot_level_basf <- ggplot( basf.plot, aes(x=Index,y=BAS.DE.Adjusted) ) + geom_line() + ylab("Daily Stock Price") + xlab("Time") + labs(title="BASF AG") +theme_minimal(base_size = 14, base_family = "Georgia")+
+  scale_x_date(date_breaks = "12 month", date_labels =  "%Y") +
+        theme(
+              panel.grid.major.x = element_blank(),
+              panel.grid.minor = element_blank(),
+              legend.title = element_blank(),
+              legend.justification = c(0, 1), 
+              legend.position = c(.1, 1.075),
+              legend.background = element_blank(),
+              legend.direction="horizontal",
+              text = element_text(size=14,family = "Georgia"),
+              plot.title = element_text(hjust=0.5,vjust=0.5,size = 20, margin = margin(b = 10)),
+              plot.subtitle = element_text(size = 14, color = "darkslategrey", margin = margin(b = 25)),
+              plot.caption = element_text(size = 11, margin = margin(t = 10), color = "grey70", hjust = 0))
+
+plot_level_bayer <- ggplot( bayer.plot , aes(x=Index,y=BAYN.DE.Adjusted) ) + geom_line(  ) + ylab("Daily Stock Price") + xlab("Time") + labs(title="BAYER AG")+theme_minimal(base_size = 14, base_family = "Georgia")+
+  scale_x_date(date_breaks = "12 month", date_labels =  "%Y") +
+        theme(
+              panel.grid.major.x = element_blank(),
+              panel.grid.minor = element_blank(),
+              legend.title = element_blank(),
+              legend.justification = c(0, 1), 
+              legend.position = c(.1, 1.075),
+              legend.background = element_blank(),
+              legend.direction="horizontal",
+              text = element_text(size=14,family = "Georgia"),
+              plot.title = element_text(hjust=0.5,vjust=0.5,size = 20, margin = margin(b = 10)),
+              plot.subtitle = element_text(size = 14, color = "darkslategrey", margin = margin(b = 25)),
+              plot.caption = element_text(size = 11, margin = margin(t = 10), color = "grey70", hjust = 0))
+
+library(gridExtra)
+grid.arrange(plot_level_basf,plot_level_bayer, nrow=2)
+
+```
+
+```{r}
+return_bayer<-100*diff(log(BAYN.DE$BAYN.DE.Adjusted))
+return_basf<- 100*diff(log(BAS.DE$BAS.DE.Adjusted))
+return_basf<-window(return_basf, start=c("2002-01-03"))
+return_bayer<-window(return_bayer, start=c("2002-01-03"))
+ #approx NA
+return_basf_bayer=merge(return_basf,return_bayer, fill=NA)
+return_basf_bayer$BAYN.DE.Adjusted<-na.approx(return_basf_bayer$BAYN.DE.Adjusted) #linear approximiation 
+ #data frame plotting
+return_basf_bayer_df<-data.frame((datetime = index(return_basf)),return_basf_bayer)
+return_bayer <- return_basf_bayer$BAYN.DE.Adjusted
+returns_plot = data.frame(datetime = index(return_basf),return_basf,return_bayer) 
+ #plotting
+plot_returns_basf <- ggplot( returns_plot, aes(x=datetime) ) + geom_line( aes( y = BAS.DE.Adjusted ) ) + ylab("Daily Stock Return") + xlab("Time") + labs(title="BASF AG") +  theme_minimal(base_size = 14, base_family = "Georgia")+
+  scale_x_date(date_breaks = "12 month", date_labels =  "%Y") +
+        theme(
+              panel.grid.major.x = element_blank(),
+              panel.grid.minor = element_blank(),
+              legend.title = element_blank(),
+              legend.justification = c(0, 1), 
+              legend.position = c(.1, 1.075),
+              legend.background = element_blank(),
+              legend.direction="horizontal",
+              text = element_text(size=14,family = "Georgia"),
+              plot.title = element_text(hjust=0.5,vjust=0.5,size = 20, margin = margin(b = 10)),
+              plot.subtitle = element_text(size = 14, color = "darkslategrey", margin = margin(b = 25)),
+              plot.caption = element_text(size = 11, margin = margin(t = 10), color = "grey70", hjust = 0))
+
+bayer_return_plot<- ggplot( returns_plot, aes(x=datetime) ) +  geom_line( aes( y = BAYN.DE.Adjusted ) ) +ylab("Daily Stock Return") + xlab("Time")  + labs( title = "BAYER" )+
+  scale_x_date(date_breaks = "12 month", date_labels =  "%Y") +
+theme_minimal(base_size = 14, base_family = "Georgia")+
+        theme(
+              panel.grid.major.x = element_blank(),
+              panel.grid.minor = element_blank(),
+              legend.title = element_blank(),
+              legend.justification = c(0, 1), 
+              legend.position = c(.1, 1.075),
+              legend.background = element_blank(),
+              legend.direction="horizontal",
+              text = element_text(size=14,family = "Georgia"),
+              plot.title = element_text(hjust=0.5,vjust=0.5,size = 20, margin = margin(b = 10)),
+              plot.subtitle = element_text(size = 14, color = "darkslategrey", margin = margin(b = 25)),
+              plot.caption = element_text(size = 11, margin = margin(t = 10), color = "grey70", hjust = 0))
+
+
+```
+
+```{r}
+library(gridExtra)
+grid.arrange(plot_returns_basf,bayer_return_plot, nrow=2)
+```
+The figure above shows in comparison the return plots of the shares of bayer and basf. 
+Most of the time the returns show some volatility, however at the time of the financial crisis (2007-2009) we see some extreme 
+```{r,  results="asis"}
+desc_df<- data.frame(basf=c(round(length(return_basf),digits=3),
+round(min(return_basf),digits=3),
+round(max(return_basf),digits=3),
+round(mean(return_basf),digits=3),
+round(sd(return_basf),digits=3),
+round(skewness(return_basf),digits=3),
+round(kurtosis(return_basf),digits=3)),
+bayer=c(round(length(return_bayer),digits=3),
+round(min(return_bayer),digits=3), 
+round(max(return_bayer),digits=3),
+round(mean(return_bayer),digits=3),
+round(sd(return_bayer),digits=3),
+round(skewness(return_bayer),digits=3),
+round(kurtosis(return_bayer),digits=3)))
+attr(desc_df,"row.names") <- c("Obs","Min","Max","Mean","Sd","Skew","Kurt")
+
+# transpose all but the first column (name)
+desc_df <- as.data.frame(t(desc_df))
+colnames(desc_df) <-  c("Obs","Min","Max","Mean","Std","Skew","Kurt")
+rownames(desc_df) <- c("BASF AG", "BAYER AG")
+kable(desc_df,caption="Descriptive Statistics")
+```
+
+Examining the time series of adjusted closing prices of both stocks, we see that the level series may be non stationarity. The augmented dicky fuller test confirms this. <br> 
+I obtained the daily stock return, by differencing the log of the stock prices. For small changes this is approximately the daily percentage change of the stock. The transformed data shows no clear non-stationarity. <br> 
+Further, graphical exploration of the return data indicates that there may be volatility clustering. Volatility clustering describes that there are periods of high volatility and periods of low volatility (Tsay 2005).
+Typical time-series models for the expected return of a stock assume constant variances, which is violated  by volatility cluserting. In consequence a model with constant variance would underestimate the volatility of the stock. 
+A solution to non-constant variances is to estimate an Arch/Garch models. <br>
+The intuition behind these models is as follows. Both models assume that the return of a share may be decomposed into its' expected value and a residual term. 
+Under the Arch model the conditional variance follows an autoregressive process. Specifically, the conditional variance is a function of a fixed number of lagged squared residuals. 
+It thus follows, if the residual term is large in magnitude that the next period forecast will be large in magnitude as well.  <br>
+The garch model generalizes the arch model by additionally modeling the conditional variance as a process of its own lags. 
+ 
+```{r , results="asis"}
+jb_basf <- jarque.bera.test(return_basf)
+adf_basf<-CADFtest(return_basf)
+jb_bayer <- jarque.bera.test(return_bayer)
+adf_bayer<-CADFtest(return_bayer)
+ 
+adf_jb_df<-data.frame(bayer_r=c(jb_bayer$statistic,jb_bayer$p.value,adf_bayer$statistic, adf_bayer$p.value),basf=c(jb_basf$statistic,jb_basf$p.value,adf_basf$statistic, adf_basf$p.value))
+colnames(adf_jb_df) <- c("BAYER","BASF")
+rownames(adf_jb_df)<-c("Jarque Bera Test" ," p-value", "ADF Test", "p-value")
+adf_jb_df <- as.data.frame(t(adf_jb_df))
+kable(adf_jb_df,caption="Hypothesis Testing")
+```
+
+The Jarque Bera test rejects the null hypothesis for both stocks that the innovations (error terms) are normally distrbuted. Further, the Augmented Dicky-Fuller test rejects the null hypothesis of non-stationarity.
+
+### Model validation
+```{r correlogram, echo=FALSE,autodep=TRUE,cache=TRUE}
+basf_acf <- acf(return_basf,main="BASF AG",plot=FALSE)
+basf_acf_df <- with(basf_acf, data.frame(lag, acf))
+
+acf_basf<- ggplot(data = basf_acf_df, mapping = aes(x = lag, y = acf)) +
+geom_hline(aes(yintercept =.0)) + geom_hline(yintercept=c(0.05, -0.05), linetype="dashed") + geom_segment(mapping = aes(xend = lag, yend = .0)) + labs(title="BASF AG")+ theme_minimal(base_size = 14, base_family = "Georgia")+
+        theme(
+              panel.grid.major.x = element_blank(),
+              panel.grid.minor = element_blank(),
+              legend.title = element_blank(),
+              legend.justification = c(0, 1), 
+              legend.position = c(.1, 1.075),
+              legend.background = element_blank(),
+              legend.direction="horizontal",
+              text = element_text(size=14,family = "Georgia"),
+              plot.title = element_text(hjust=0.5,vjust=0.5,size = 20, margin = margin(b = 10)),
+              plot.subtitle = element_text(size = 14, color = "darkslategrey", margin = margin(b = 25)),
+              plot.caption = element_text(size = 11, margin = margin(t = 10), color = "grey70", hjust = 0))
+ basf_pacf <- pacf(return_basf, main="BASF AG",plot=FALSE)
+basf_pacf_df <- with(basf_pacf, data.frame(lag, acf))
+pacf_basf <- ggplot(data = basf_pacf_df, mapping = aes(x = lag, y = acf)) +
+       geom_hline(aes(yintercept =.0)) +
+   geom_hline(yintercept=c(0.05, -0.05), linetype="dashed") + 
+       geom_segment(mapping = aes(xend = lag, yend = .0)) + labs(title="BASF AG") +ylab("PACF")+ theme_minimal(base_size = 14, base_family = "Georgia")+
+        theme(
+              panel.grid.major.x = element_blank(),
+              panel.grid.minor = element_blank(),
+              legend.title = element_blank(),
+              legend.justification = c(0, 1), 
+              legend.position = c(.1, 1.075),
+              legend.background = element_blank(),
+              legend.direction="horizontal",
+              text = element_text(size=14,family = "Georgia"),
+              plot.title = element_text(hjust=0.5,vjust=0.5,size = 20, margin = margin(b = 10)),
+              plot.subtitle = element_text(size = 14, color = "darkslategrey", margin = margin(b = 25)),
+              plot.caption = element_text(size = 11, margin = margin(t = 10), color = "grey70", hjust = 0))
+
+```
+
+```{r acf bacf basf, cache=T,echo=F}
+
+gridExtra::grid.arrange(acf_basf, #print our plot,
+ 
+ pacf_basf )#print our plot)
+
+```
+Both model validation plots show that there seems to be little structure in the residuals.
+```{r acf pcf calc, cache=T}
+bayer_acf <- acf(return_bayer,main="BAYER AG",plot=FALSE)
+bayer_acf_df <- with(bayer_acf, data.frame(lag, acf))
+acf_bayer <- ggplot(data = bayer_acf_df, mapping = aes(x = lag, y = acf)) +
+       geom_hline(aes(yintercept =.0)) +
+      geom_hline(yintercept=c(0.05, -0.05), linetype="dashed") + 
+       geom_segment(mapping = aes(xend = lag, yend = .0)) + labs(title="BAYER AG") + xlab("ACF")+ theme_minimal(base_size = 14, base_family = "Georgia")+
+        theme(
+              panel.grid.major.x = element_blank(),
+              panel.grid.minor = element_blank(),
+              legend.title = element_blank(),
+              legend.justification = c(0, 1), 
+              legend.position = c(.1, 1.075),
+              legend.background = element_blank(),
+              legend.direction="horizontal",
+              text = element_text(size=14,family = "Georgia"),
+              plot.title = element_text(hjust=0.5,vjust=0.5,size = 20, margin = margin(b = 10)),
+              plot.subtitle = element_text(size = 14, color = "darkslategrey", margin = margin(b = 25)),
+              plot.caption = element_text(size = 11, margin = margin(t = 10), color = "grey70", hjust = 0))
+bayer_pacf <- pacf(return_bayer, plot=FALSE)
+bayer_pacf_df <- with(bayer_pacf, data.frame(lag, acf))
+pacf_bayer <- ggplot(data = bayer_pacf_df, mapping = aes(x = lag, y = acf)) +
+       geom_hline(aes(yintercept =.0)) +
+      geom_hline(yintercept=c(0.05, -0.05), linetype="dashed") + 
+       geom_segment(mapping = aes(xend = lag, yend = .0)) + labs(title="BAYER AG") +ylab("PACF") + theme_minimal(base_size = 14, base_family = "Georgia")+
+        theme(
+              panel.grid.major.x = element_blank(),
+              panel.grid.minor = element_blank(),
+              legend.title = element_blank(),
+              legend.justification = c(0, 1), 
+              legend.position = c(.1, 1.075),
+              legend.background = element_blank(),
+              legend.direction="horizontal",
+              text = element_text(size=14,family = "Georgia"),
+              plot.title = element_text(hjust=0.5,vjust=0.5,size = 20, margin = margin(b = 10)),
+              plot.subtitle = element_text(size = 14, color = "darkslategrey", margin = margin(b = 25)),
+              plot.caption = element_text(size = 11, margin = margin(t = 10), color = "grey70", hjust = 0))
+```
+                                                                                                           
+```{r acf pacf bayer}
+grid.arrange(acf_bayer, #print our plot
+pacf_bayer) #print our plot
+```
+Here again the model validation plots show that there seems to be little structure in the residuals.
+```{r}
+fit_ma_basf <- arima(return_basf,order=c(0,0,1))
+fit_ar_basf <- arima(return_basf,order=c(1,0,0))
+fit_arma_basf <- arima(return_basf,order=c(1,0,1))
+fit_ma_bayer <-arima(return_bayer,order=c(0,0,1))
+fit_ar_bayer<-arima(return_bayer,order=c(1,0,0)) #ar1 best aic
+fit_arma_bayer<-arima(return_bayer,order=c(1,0,1)) #lowest BIC
+ BIC_ar_basf <-AIC(fit_ar_basf, k = log(length(return_basf)))
+BIC_ma_basf <-AIC(fit_ma_basf, k = log(length(return_basf)))
+BIC_arma_basf<-AIC(fit_arma_basf,k = log(length(return_basf)))
+
+BIC_ar_bayer <-AIC(fit_ar_bayer, k = log(length(return_bayer)))
+BIC_ma_bayer <-AIC(fit_ma_bayer, k = log(length(return_bayer)))
+BIC_arma_bayer<-AIC(fit_arma_bayer,k = log(length(return_bayer)))
+
+ basf_bayer_bic_df<- data.frame(AR=c((BIC_ar_basf),BIC_ar_bayer),MA=c(BIC_ma_basf,BIC_ma_bayer),ARMA=c(BIC_arma_basf,BIC_arma_bayer))
+rownames(basf_bayer_bic_df) <- c("BASF","BAYER")
+ ar_res_test<-Box.test(fit_ar_basf$res, lag=round(sqrt(length(return_basf))), type="Ljung-Box") #not valid
+ar_res_sq_basf_test<-Box.test(fit_ar_basf$res^2, lag=round(sqrt(length(return_basf))), type="Ljung-Box") #(g)arch necessary
+
+ma_res_test<-Box.test(fit_ma_basf$res, lag=round(sqrt(length(return_basf))), type="Ljung-Box") #not valid
+ma_res_sq_basf_test<-Box.test(fit_ma_basf$res^2, lag=round(sqrt(length(return_basf))), type="Ljung-Box") #(g)arch necessary
+
+arma_res_test<-Box.test(fit_arma_basf$res, lag=round(sqrt(length(return_basf))), type="Ljung-Box") #not valid
+arma_res_sq_basf_test<-Box.test(fit_arma_basf$res^2, lag=round(sqrt(length(return_basf))), type="Ljung-Box") #(g)arch necessary
+ar_res_test<-Box.test(fit_ar_bayer$res, lag=round(sqrt(length(return_bayer))), type="Ljung-Box") #not valid
+ar_res_sq_bayer_test<-Box.test(fit_ar_bayer$res^2, lag=round(sqrt(length(return_bayer))), type="Ljung-Box") #(g)arch necessary
+
+ma_res_test<-Box.test(fit_ma_bayer$res, lag=round(sqrt(length(return_bayer))), type="Ljung-Box") #not valid
+ma_res_sq_bayer_test<-Box.test(fit_ma_bayer$res^2, lag=round(sqrt(length(return_bayer))), type="Ljung-Box") #(g)arch necessary
+
+arma_res_test<-Box.test(fit_arma_bayer$res, lag=round(sqrt(length(return_bayer))), type="Ljung-Box") #not valid
+arma_res_sq_bayer_test<-Box.test(fit_arma_bayer$res^2, lag=round(sqrt(length(return_bayer))), type="Ljung-Box") #(g)arch necessary
+
+ box<-Box.test(fit_arma_bayer$res, lag=56, type="Ljung-Box")
+box_sq<-Box.test(fit_arma_bayer$res^2, lag=56, type="Ljung-Box")
+
+box_basf<-Box.test(fit_arma_basf$res, lag=56, type="Ljung-Box")
+box_sq_basf<-Box.test(fit_arma_basf$res^2, lag=56, type="Ljung-Box")
+
+box_df<-data.frame(bayer_r=c(box$statistic,box$p.value,box_sq$statistic, box_sq$p.value),basf=c(box_basf$statistic,box$p.value,box_sq_basf$statistic, box_sq$p.value))
+colnames(box_df) <- c("BAYER","BASF")
+rownames(box_df)<-c("Box-test" ," p-value", "Box-test resid. sq.", "p-value")
+box_df <- as.data.frame(t(box_df))
+```
+
+```{r , results="asis"}
+library(texreg)
+htmlreg(list(fit_ar_basf, fit_ma_basf, fit_arma_basf),custom.model.names = c("AR","MA","ARMA"), custom.coef.names=c("&phi;<sup>1</sup>","c","&theta;<sup>1</sup>"),caption="BASF AG",custom.note = "SE in parentheses",    star.symbol ="")
+```
+For all three model coefficients we find that the coefficients are significant at the ususal levels. Moreover, based on the information criteria we find that the arma (1,1) model provides the best fit to the data.
+```{r, results="asis"}
+htmlreg(list(fit_ar_bayer, fit_ma_bayer, fit_arma_bayer),custom.model.names = c("AR","MA","ARMA"), custom.coef.names=c("&phi;<sup>1</sup>","c","&theta;<sup>1</sup>"),caption="BAYER AG",custom.note = "SE in parentheses",    star.symbol ="")
+```
+
+```{r, eval=FALSE, include=FALSE, results="asis"}
+kable(basf_bayer_bic_df, caption="BIC")
+```
+
+```{r, results="asis"}
+kable(box_df,caption="Box-Ljung Test")
+```
+
+The table above shows the results of testing for significant (squared) autcorrelations of both Arima (1,1) models for the BASF and Bayer AG share. The high test-statistics shows that we can not reject significant autocorrelations. Second, we find a similar result for the squared residuals. <br>
+The first result as the Box-Ljung test is not surprising given that the test is very sensitive and we have large dataset. Further, the previously shown (partial) autocorrelation plots showed not much structure. <br>
+However the second result highlights a serious inadequacy of our model. 
+In the second test we analysed the squared residuals for significant autocorrelations. The later are a proxy for the unobserved cond. volatility. The high value of the test statistic leads us to reject  the null hypothesis of uncorrelated squared residuals. Hence we need to estimate Arch/Garch models.
+```{r, include=FALSE}
+library(fGarch)
+fit_arch_3_basf<-garchFit(~arma(1,1)+garch(3,0),data =return_basf,cond.dist="QMLE")
+fit_arch_4_basf<-garchFit(~arma(1,1)+garch(4,0),data =return_basf,cond.dist="QMLE")
+fit_garch_basf<-garchFit(~arma(1,1)+garch(1,1),data = return_basf,cond.dist="QMLE")
+
+fit_arch_2_bayer<-garchFit(~arma(1,1)+garch(2,0),data =return_bayer,cond.dist="QMLE")
+fit_garch_bayer<-garchFit(~arma(1,1)+garch(1,1),data = return_bayer,cond.dist="QMLE")
+```
+```{r GARCHFits,echo=F,results='asis',cache=TRUE}
+htmlreg(list(fit_arch_4_basf,fit_garch_basf,fit_arch_2_bayer,fit_garch_bayer), stars = c(0.001, 0.01, 0.05),custom.coef.names =c("c","&phi;<sup>1></sup>","&theta;<sup>1></sup>","&omega;","&alpha;<sup>1</sup>","&alpha;<sup>2</sup>","&alpha;<sup>3</sup>","&alpha;<sup>4</sup>","&beta;<sup>1</sup>") ,custom.model.names = c("Arch(4) - BASF","Garch(1,1) - BASF","Arch(2) - Bayer","Garch(1,1) - Bayer"))
+```
+
+The table above presents the model coefficients of the best fitting arch/garch model for the BASF AG and the Bayer AG stock. <br>
+We note that for both Garch models the coefficients sum to one. The implication are as follows. First, squared shocks are persistent, as they permanently shift the series. Second, the forecast for the conditional variance in the next future period is equal to the cond. variance in the previous period. Indeed, it can be shown that this is true for all forecast horizons.
+
+### Forecasting
+
+We evalute the fit of our  Arch (4) and a Garch (1,1) model using a pseudo out-of-sample forecast. In particular we train our models on the complete time series excluding the last year and then compare the model forecast to the realized series.
+
+```{r forecast,message=F,echo=F,include=F,cache=TRUE}
+garch_spec <- ugarchspec(variance.model = list(model = "sGARCH", 
+garchOrder = c(1,1)), mean.model = list(armaOrder = c(1,1), arfima = FALSE ))
+
+arch_spec <- ugarchspec(variance.model = list(model = "sGARCH", 
+garchOrder = c(4,0)), mean.model = list(armaOrder = c(1,1), arfima = FALSE ))
+
+ #forecast end 2016
+roll_basf = ugarchroll(garch_spec, data = return_basf,n.start = 3627, refit.every = 1, refit.window = "moving", solver='hybrid')
+
+ 
+roll_basf2 = ugarchroll(arch_spec, data = return_basf, n.start = 3627, refit.every = 1, refit.window = "moving",solver = 'hybrid')
+library(forecast)
+randomwalk <- rwf(return_basf[3627:3883])
+
+```
+```{r forecast plot,}
+ par(mfrow=c(1,2))
+ plot(roll_basf, which=2, main="Forecast Garch(1,1) vs Realized")  
+ plot(roll_basf2, which = 2, main="Forecast Arch(4) vs Realized")
+```
+The figure above compares the conditional volatility forecast for both shares. 
+The model forecast is displayed in blue and the realized sereis is displayed in grey.
+```{r, echo=FALSE,  results="asis"}
+fpm_basf<- data.frame(fpm(roll_basf), fpm(roll_basf2))
+colnames(fpm_basf) <- c("GARCH (1,1)","ARCH (4) ")
+fpm_basf <- fpm_basf[-3,]
+kable(fpm_basf,caption ="Forecast Measures", digits=3)
+```
+
+## Multivariate Analysis 
+
+In this part we analyse the time series of the Bayer AG and BASF AG stock together. For the multivariate case we model the dynamic correlations of both shares instead of the variance. Since both are related, we may obtain the later from the former. We estimate the dynamic correlations with a multivariate Garch model.
+Here we will only display the model forecast.
+
+### Multivariate Garch forecast 
+```{r multivar,echo=FALSE,message=FALSE,include=FALSE,cache=TRUE}
+dcc.garch12.spec = dccspec(uspec =  multispec( c( ugarchspec(mean.model = list(armaOrder = c(1,1)), variance.model = list(garchOrder = c(3,0), model = "sGARCH"), distribution.model = "norm"),
+ugarchspec(mean.model = list(armaOrder = c(1,1)), variance.model = list(garchOrder = c(2,0), model = "sGARCH"), distribution.model = "norm")) ),
+dccOrder = c(1,1), distribution = "mvnorm")
+dcc.fit = dccfit(dcc.garch12.spec, data = return_basf_bayer)
+ # dcc.fit
+#
+ dcc.garch11.spec = dccspec(uspec =  multispec( c( ugarchspec(mean.model = list(armaOrder = c(1,1)), variance.model = list(garchOrder = c(4,0), model = "sGARCH"), distribution.model = "norm"),
+ugarchspec(mean.model = list(armaOrder = c(1,1)), variance.model = list(garchOrder = c(2,0), model = "sGARCH"), distribution.model = "norm")) ),
+dccOrder = c(1,1), distribution = "mvnorm")
+dcc.fit2 = dccfit(dcc.garch11.spec, data = return_basf_bayer)
+#  dcc.fit2
+#  
+#  
+#  dcc.garch13.spec = dccspec(uspec =  multispec( c( ugarchspec(mean.model = list(armaOrder = c(1,0)), variance.model = list(garchOrder = c(4,0), model = "sGARCH"), distribution.model = "norm"), 
+# ugarchspec(mean.model = list(armaOrder = c(1,1)), variance.model = list(garchOrder = c(2,0), model = "sGARCH"), distribution.model = "norm")) ),
+# dccOrder = c(1,1), distribution = "mvnorm")
+# dcc.fit3 = dccfit(dcc.garch13.spec, data = return_basf_bayer)
+#  dcc.fit3
+```
+```{r plot mgarch}
+ plot(dcc.fit,which=2)
+```
