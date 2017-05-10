@@ -36,8 +36,9 @@ library(lazyeval)
 library(forcats)
 library(boot)
 library(extrafont)
-opts_chunk$set( cache.path = "cache", 
-    fig.width = 8, fig.height = 6, message = FALSE, error = FALSE, warning = FALSE, echo=F,
+setwd("/Users/sergej/blog/data-vis/Data-Rcode")
+opts_chunk$set( cache.path = "/Users/sergej/blog/data-vis/Data-Rcode/Thesis_cache/", 
+    fig.width = 10, fig.height = 8, message = FALSE, error = FALSE, warning = FALSE, echo=F,
     echo = TRUE, dev = "svg")
 my.ggplot2<-function(df,title,shape.val,linetype.vals,color){ 
   ggplot(df, aes(x=IND, y=VAX)) +
@@ -71,31 +72,31 @@ Economics from the KU Leuven. Especially, I want to thank my promotor Liza Archa
 In the last four decades, international trade has become increasingly characterized by international production fragmentation (IPF). 
 International product fragmentation means that the production of goods is split across several countries. 
 A large body of literature has documented the large extent of international product fragmentation.
-^[Prominent papers in this literature are [@Johnson2012], [@baldwin2014], [@Timmer2015]. 
+^[Prominent papers in this literature are @Johnson2012 , @baldwin2014, @Timmer2015. 
 [@Johnson2012] measure the extent of international product fragmentation between 1970-2010 with an indicator of value-added trade to gross exports. 
 Specifically, they show that international product fragmentation grows in the 1970s, is unchanged over the 1980s and grows at an extended speed since the 1990s.]
-In particular, [@Timmer2015] documented that the foreign content incorporated in goods increased by 85  perc. between 1995 and 2005.
-^[[@Timmer2015] analyzed 560 final manufacturing products in 40 countries of which 27 were European countries.] <br>
+In particular, @Timmer2015 documented that the foreign content incorporated in goods increased by 85  perc. between 1995 and 2005.
+^[@Timmer2015 analyzed 560 final manufacturing products in 40 countries of which 27 were European countries.] <br>
 Before international product fragmentation, goods were mainly produced within one country and therefore the value of bilateral trade flows (gross exports) was a good measure of the contributions of domestic inputs and of domestic production factors. 
 However, with international product fragmentation goods are produced in several stages in multiple countries. 
 Consequently, gross exports also include foreign content and may not correctly capture the contribution of domestic production factors to final output. 
-Indeed, it has been documented in a large literature that the distribution of who produces for whom in the world economy differs  strongly when we look at value-added trade instead of gross exports.^[Some references in this literature  are  [@daudin2011], [@Koopman], [@wang2013], [@baldwin2014].] 
-To give an example, [@Koopman] show that the trade surplus of China with the USA is reduced by 41  perc. based on value-added trade compared to gross exports. <br>
+Indeed, it has been documented in a large literature that the distribution of who produces for whom in the world economy differs  strongly when we look at value-added trade instead of gross exports.^[Some references in this literature  are   @daudin2011, @Koopman, @wang2013, @baldwin2014.] 
+To give an example, @Koopman show that the trade surplus of China with the USA is reduced by 41  perc. based on value-added trade compared to gross exports. <br>
 The international production fragmentation literature documented that the volume of trade flows changes significantly when we focus on the inferred domestic content instead of the observed gross exports. 
 Consequently, the pattern of specialization of countries may also be sensitive to looking at value-added trade instead of gross exports. 
 The seminal work of Ricardo showed that a country has a comparative advantage in producing and exporting those goods for which it has a relatively lower production cost compared to its trade partners.
-^[Ricardo's model studied the case of two countries and two goods. His results were extended to the case of a continuum of goods by [@dornbusch} and to any number of countries by [@eaton].]
+^[Ricardo's model studied the case of two countries and two goods. His results were extended to the case of a continuum of goods by @dornbusch and to any number of countries by @eaton.]
 Gross exports include foreign contributions to the relative production costs.
 The pattern of revealed comparative advantage on the basis of gross exports may differ from the pattern of revealed comparative advantage based on the domestic content of trade. 
 The first objective of this thesis is to evaluate whether the pattern of revealed comparative advantage changes significantly, when it is computed on the basis of domestic factors only.<br>
 A theoretically sound approach is necessary to analyze the pattern of revealed comparative advantage. 
-The seminal contribution of [@costinot] showed that the ranking of relative exports maps to the underlying ranking of relative productivity in a setup with multiple countries and multiple industries. 
+The seminal contribution of @costinot showed that the ranking of relative exports maps to the underlying ranking of relative productivity in a setup with multiple countries and multiple industries. 
 Further, the authors showed that the pattern of revealed comparative advantage could be retrieved from the bilateral trade matrix.
 Specifically, they showed that a two-step estimation procedure allows obtaining the pattern of revealed comparative advantage.
 <br> 
 To compute the pattern of revealed comparative advantage, I use two sources of value-added trade and gross exports data, namely the WiOD and the TiVA.
-^[Details about the WiOD are provided in [@Timmer2015]. 
-The TiVA database is a joint initiative of the WTO and the OECD. Details are provided in [@tiva2].]
+^[Details about the WiOD are provided in @Timmer2015. 
+The TiVA database is a joint initiative of the WTO and the OECD. Details are provided in @tiva2.]
 The TiVA data includes 61 countries of the following groups: the OECD, the EU 28, the G20 and most of East and South-East Asian countries and several South American countries. 
 The WiOD includes the countries of the EU 27 and 14 other major economies.
 Both datasets provide information on the primary, manufacturing and service industries according to the ISIC Rev. 3.1 industry classification.
@@ -116,10 +117,10 @@ The second objective of this thesis is to assess the contribution of different c
 A large literature has addressed this question on the basis of gross trade flows, but given the extent of international production fragmentation, it is important to construct this analysis on value-added trade rather than gross exports. 
 The shift of focus is necessary because I want to correctly capture how shocks to domestic production factors diffuse through the international trade network. <br>
 A sound approach is necessary to assess the centrality of countries in the propagation of shocks through the network. 
-Different metrics have been proposed to assess network centrality.^[Some references in this literature are [@Katz1953], [@bonacich1972], [@freeman1978] and [@jackson96].] 
-I follow the approach of [@acemoglu2012], who have shown that eigenvector is the theoretically sound approach.
-^[[@acemoglu2012] use the notion of influence vector constructed on the basis of the alpha-centrality (see [@bonacich2001evcent]). Alpha-centrality is very closely linked to eigenvector-centrality.]
-[@acemoglu2012] analyze the centrality of different industries in the US economy.
+Different metrics have been proposed to assess network centrality.^[Some references in this literature are @Katz1953],  @bonacich1972, @freeman1978 and @jackson96.] 
+I follow the approach of @acemoglu2012, who have shown that eigenvector is the theoretically sound approach.
+^[@acemoglu2012 use the notion of influence vector constructed on the basis of the alpha-centrality (see @bonacich2001evcent). Alpha-centrality is very closely linked to eigenvector-centrality.]
+@acemoglu2012 analyze the centrality of different industries in the US economy.
 The unit eigenvector ranks every node according to its centrality in the national network. 
 Elements of the eigenvector capture the contribution of each node when an extra dollar is added to the network [@spizzirri2011]. <br>
 I adapt this approach to my dataset that contains many countries and many industries. 
@@ -141,8 +142,8 @@ According to the theory of comparative advantage, an industry which is relativel
 According to network theory, an industry with relative higher network centrality is relatively more important in terms of how many dollars it contributes to the total value of the network.
 Consequently, it may be expected that both measures capture the ranking of relative sectoral ability of any given pair of countries.<br>
 This thesis contributes to the literature that studies the pattern of revealed comparative advantage. 
-In this literature, [@costinot] derived a methodology to obtain the pattern of revealed comparative advantage and computed it on a dataset with 13 manufacturing industries in 21 countries for 1997. 
-The characterization of structural revealed comparative advantage was extended to a larger dataset with 1018 products, 20 exporting countries and 70 importing countries in the period from 1995 till 2010 by [@leromain2014]. 
+In this literature,  @costinot derived a methodology to obtain the pattern of revealed comparative advantage and computed it on a dataset with 13 manufacturing industries in 21 countries for 1997. 
+The characterization of structural revealed comparative advantage was extended to a larger dataset with 1018 products, 20 exporting countries and 70 importing countries in the period from 1995 till 2010 by @leromain2014. 
 Both papers computed the revealed comparative advantage indicator on the basis of gross exports. 
 I contribute to this literature by quantifying the degree of divergence between the pattern of revealed comparative advantage based on value-added trade and on gross exports for fifty-six countries in 2005. 
 I further contribute by showing that the pattern of revealed comparative advantage obtained by implementing the methodology of [@costinot] can be alternatively obtained by constructing the ranking of relative sectoral centrality for any pair of countries. 
@@ -150,11 +151,11 @@ The latter approach is simpler because the ranking is directly obtained from val
 This thesis is not the first to investigate the impact of international product fragmentation on countries' specialization in world trade. 
 Previous studies used the ad-hoc Balassa-Samuelson measure of revealed comparative advantage. 
 In particular, two recent contributions compared the pattern of revealed comparative advantage based on value-added trade in line with the factor content of trade (forward value-added) and gross exports.  
-[@wang2013] examined the time profile of the pattern of revealed comparative advantage of the USA and China in the period from 1995 till 2011 for one manufacturing industry and one service industry. 
-[@Koopman] compared the pattern of specialization for one manufacturing industry and one service industry in 2004.
+@wang2013 examined the time profile of the pattern of revealed comparative advantage of the USA and China in the period from 1995 till 2011 for one manufacturing industry and one service industry. 
+@Koopman compared the pattern of specialization for one manufacturing industry and one service industry in 2004.
 Both studies found that the pattern of specialization was significantly altered by switching to value-added trade.  
-On the other hand, [@baldwin2014] found that the pattern of specialization for eight manufacturing industries in thirty-eight countries was not altered significantly by changing from gross exports to backward value-added trade. 
-I contribute to this literature by switching from the ad-hoc measure of revealed comparative advantage to the structural measure derived by [@costinot]. <br>
+On the other hand, @baldwin2014 found that the pattern of specialization for eight manufacturing industries in thirty-eight countries was not altered significantly by changing from gross exports to backward value-added trade. 
+I contribute to this literature by switching from the ad-hoc measure of revealed comparative advantage to the structural measure derived by @costinot. <br>
 The thesis is organised as follows. 
 In chapter two I present the methodology to retrieve the revealed comparative advantage from trade flows. 
 Moreover, I discuss the results of analyzing the degree of divergence of revealed comparative advantage based on value-added trade and gross exports. 
@@ -182,7 +183,7 @@ Further, for each good, there are infinitely many varieties $\omega \in \Omega$.
 The productive efficiency  $z^k_i(\omega)$ describes how many units of the variety $\omega$ of good $k$ can be produced with one unit of labor in country $i$. <br> 
 ^[CDK showed in the working paper version that the close link between trade flows and productivity differences holds as well under weaker assumptions as long as the technology differences across countries are small.]
 The assumption that the productivity distribution is Frechet follows the seminal article of [@eaton].
-^[[@eaton2] outline a microfoundation for the choice of the Frechet distribution. 
+^[@eaton2 outline a microfoundation for the choice of the Frechet distribution. 
 The authors show that under the assumption, that the production technology available is the result of a series of successful improvements in technology drawn from the Pareto distribution and the additional assumption that only the best technology is effectively used in production, the production of these "best" draws is Frechet.]
  <br>
 
@@ -209,18 +210,22 @@ The lower-tier utility function is a constant elasticity of substitution utility
 x^k_{j}(\omega) &= \left[\frac{p^k_{j}(\omega) } {p^k_{j} } \right]^{1-\sigma_{j}^k} \alpha^k_j w_j L_j \\ 
 \text{where}\quad 0 & \leq \alpha_j^k \leq 1,\, \sigma_{j}^k < 1+\theta, \quad \text{and} \quad 
 p^k_{j}=\left[ \sum_{\omega'  \in \Omega} p_j^k (\omega')^{1-\sigma_j^k} \right]^{ 1 / ( {1-\sigma_j^k} )}  
+  (\#eq:expenditure)
 \end{align*} 
 The parameter $\alpha^k_j$ denotes the expenditure shares of country $j$ on varieties of sector $k$ and $\sigma^k_j$ denotes the elasticity of substitution between the varieties. 
 The restriction on $\sigma^k_j$ is a technical assumption. It guarantees the existence of a well-defined CES price index $p_j^k$.  <br>
 The previous assumptions imply that across the full set of varieties, in relative terms
 the ratio of exports of country $i$ and $i'$ to country $j$ in sector $k$ and $k'$ is determined by the ratio of expected sectoral productivities and the ratio of relative sectoral trade cost.
-\begin{equation} \label{eq:1}\ln \left( \frac{x_{i,j}^k x^{k'}_{i'j}}{x_{i,j}^{k'} x^{k}_{i'j}} \right)= \theta \ln \left( \frac{z_{i}^k z^{k'}_{i'}}{z_{i}^{k'} z^{k}_{i'}} \right)-\ln \left( \frac{ d_{i,j}^k d^{k'}_{i'j}}{d_{i,j}^{k'} {d}^{k}_{i',j}} \right) \end{equation}
+\begin{equation} \label{eq:1}\ln \left( \frac{x_{i,j}^k x^{k'}_{i'j}}{x_{i,j}^{k'} x^{k}_{i'j}} \right)= \theta \ln \left( \frac{z_{i}^k z^{k'}_{i'}}{z_{i}^{k'} z^{k}_{i'}} \right)-\ln \left( \frac{ d_{i,j}^k d^{k'}_{i'j}}{d_{i,j}^{k'} {d}^{k}_{i',j}} \right) 
+(\#eq:relative-exports)
+\end{equation}
 where $x_{i,j}^k$ denotes bilateral exports and $z_{i}^k$ denotes productivity.
 
 The additional assumption that trade costs can be modeled as the product of a bilateral trade cost and an importer-sector trade cost delivers the prediction that the pattern of trade is determined by country-sector differences in productive efficiency. 
 The ranking of relative sectoral exports is directly determined by the ranking of relative sectoral productivity. 
 \begin{equation}
 \frac{z_{i}^1}{{z}^{1}_{i'}} \leq \dots \leq \frac{z_{i}^K}{{z}^{K}_{i'}} \Leftrightarrow \frac{x_{i,j}^1}{x^{1}_{i',j}}\leq \dots \leq\frac{x_{i,j}^K}{x^{K}_{i',j}}
+(\#eq:simplified)
 \end{equation}
 
 ## The pattern of RCA for gross exports and for value-added trade
@@ -245,9 +250,9 @@ Instead, VAT is constructed on the basis of global input-output tables [@wang201
 Global input-output tables are linked by researchers on the basis of national input-output tables, which are constructed by national statistical agencies [@timmer_gvc].   <br> 
 The methodology to decompose EXGR into VAT is based on Leontief's input-output models [@wang2013]. 
 Leontief showed that one can estimate the type and the quantity of necessary intermediate inputs to produce one unit of output on the basis of the input-output structure of the economy. 
-[@wang2013} refine the input-output approach to obtain the mapping from observed gross output  to any sector and country to the underlying value-added content contributed by production factors in any partner country and sector.
+@wang2013 refine the input-output approach to obtain the mapping from observed gross output  to any sector and country to the underlying value-added content contributed by production factors in any partner country and sector.
 On the basis of the flow of gross output, VAT is obtained by multiplying the flows of gross output with the ratio of the value-added to gross output at the bilateral sectoral level. <br>
-The intuition behind the decomposition of EXGR into VAT is described by [@wang2013]. 
+The intuition behind the decomposition of EXGR into VAT is described by  @wang2013. 
 The production of one dollar of exports occurs in several stages. 
 In the final round of production, an sector produces the exported final good by creating value-added and by making use of intermediate inputs. 
 The intermediate inputs are themselves produced by creating value-added and by making use of intermediate inputs. 
@@ -271,7 +276,7 @@ It measures the direct and indirect contributions of a sector's capital and labo
 It is immediate that the CDK approach can be used to retrieve the ranking of RCA for EXGR, BVAT and  FVAT. 
 However, I need to interpret the trade flows $x_{i,j}^k$ accordingly and redefine $1/z_i^k$ as capturing the corresponding production cost of country $i$ and sector $k$. 
 
-Under the additional assumption that the trade cost in all three cases can be modeled as the product of a bilateral trade cost and an importer-sector trade cost, the empirical specification of eq 2.1 is as follows.
+Under the additional assumption that the trade cost in all three cases can be modeled as the product of a bilateral trade cost and an importer-sector trade cost, the empirical specification of \@ref(eq:relative-exports) is as follows.
  \begin{align}  \ln \left( \frac{x_{i,j}^k x^{k'}_{i'j}}{x_{i,j}^{k'} x^{k}_{i'j}} \right)= \theta \ln \left( \frac{z_{i}^k z^{k'}_{i'}}{z_{i}^{k'} z^{k}_{i'}} \right)+\ln \left( \frac{ \epsilon_{i,j}^k \epsilon^{k'}_{i',j}}{\epsilon_{i,j}^{k'} {\epsilon}^{k}_{i',j}} \right) \end{align}
 The econometric error term $\epsilon_{i,j}^k$ includes variable trade cost and other time varying unobserved components. 
  $x_{i,j}^k$ denotes EXGR, BVAT and FVAT respectively.
@@ -283,24 +288,27 @@ The authors state that the following simpler equation may be estimated equivalen
   \begin{align} 
   \label{eq:2} 
   \ln x_{i,j}^k=\delta_{i,j}+\delta_j^k + \theta \ln z_i^k+\epsilon^k_{i,j}
+  (\#eq:bi-exports)
  \end{align} 
-The eq. 2.3 states that the three trade indicators EXGR, FVAT and BVAT $x_{i,j}^k $ from country $i$ in sector $k$ to market $j$ are determined by the inverse of production cost $\ln z_i^k$, exporter-importer fixed-effects $\delta_{i,j}$ and importer-sector fixed-effects $\delta_j^k$. 
+The \@ref(eq:bi-exports) states that the three trade indicators EXGR, FVAT and BVAT $x_{i,j}^k $ from country $i$ in sector $k$ to market $j$ are determined by the inverse of production cost $\ln z_i^k$, exporter-importer fixed-effects $\delta_{i,j}$ and importer-sector fixed-effects $\delta_j^k$. 
 This approach is akin to a 'difference-in-difference' estimation. <br>
 The structural revealed comparative advantage measure is based on the estimated exporter-sector fixed effect.
 The fixed effect $\delta_i^k$. is the empirical equivalent to the $\theta \ln z_i^k$ term in eq. 2.2.   
-   \begin{align} \label{eq:3}
+   \begin{align}   
 \ln {x}_{i,j}^k=\delta_{i,j}+\delta_j^k + \delta_i^k + \epsilon^k_{i,j}
+ (\#eq:3)
  \end{align}
  The revealed  comparative advantage can be retrieved based on the estimate of $\theta$ and the exported-sector fixed effect $\delta_i^k$.
  ^[This approach of retrieving the pattern of RCA differs from the Balassa approach. 
  In the Balassa approach RCA is defined as: $ \left(x^k_{i,World} \, / \sum_{k'=1}^K x_{i,World}^{k'} \right)  \, /  \left(\sum_{i'=1}^I x^k_{i',World} \, / \sum_{i'=1}^I \sum_{k'=1}^K x_{i,World}^{k'} \right) $. 
- [@leromain2014] show that the structural RCA is better suited to analyse the pattern of RCA across countries and sectors than the Balassa-based RCA.]
+ @leromain2014 show that the structural RCA is better suited to analyse the pattern of RCA across countries and sectors than the Balassa-based RCA.]
  \begin{align*} 
- \label{eq:4}
+ 
   z_i^k=e^{{\delta_i^ k}/{\theta}} 
+ (\#eq:4)
   \end{align*}
 I need an estimate of the dispersion parameter $\theta$ to construct the rankings of comparative advantage. 
-It can be inferred on the basis of eq. 2.4 that  $\theta$ may be directly estimated using value-added trade or EXGR.
+It can be inferred on the basis of \@ref(eq:3) that  $\theta$ may be directly estimated using value-added trade or EXGR.
 However, as our analysis of the degree of divergence between the RCA rankings is robust to the estimate of $\theta$, I discuss the methodology, additional data sources and further data manipulations to estimate $\theta$ in the appendix.
 
 ## Data
@@ -319,7 +327,7 @@ Second, I excluded countries that have no positive trade flows in a complete row
 Moreover, I excluded the sector 'electricity, water and gas supply' (40-41) and 'public sector services (75-95)' as many countries recorded zero exports in those sectors.
 Third, I excluded Saudi Arabia from the estimations because it exports mainly oil.^[The share of petroleum exports as a fraction of total f.o.b. exports in 2005 were 90 percent [@opec].]
 <br>
-The second data source is the WiOD [@Timmer2015].^[The decomposition of EXGR to VAT on the basis of the WiOD was conducted with the R packages "wiod" and "decompr" created by [@wiod_R].] 
+The second data source is the WiOD [@Timmer2015].^[The decomposition of EXGR to VAT on the basis of the WiOD was conducted with the R packages "wiod" and "decompr" created by @wiod_R.] 
 The WiOD has a larger focus on European countries.
 It includes 27 European countries and 15 other economies. 
 It covers 19 sectors, of which 6 are service sectors, 11 are manufacturing sectors and 2 are primary sectors.^[A sector denotes one or more chapter of the ISIC REV. 3.1 classification.] <br>
@@ -333,7 +341,7 @@ The two databases overlap for thirty-four countries, of which 25 are European an
 
 ```{r fig data prep, message=FALSE, warning=FALSE, cache=T, include=FALSE}
 #norm_RCA includes WIOD regression results
-setwd("/Users/sergej/blog")
+
 library(tidyverse)
 library(grid)
 library(gridExtra)
@@ -423,7 +431,7 @@ p.1.wiod <- ggplot(dat.m.wiod, aes(x=IND, y=VAX, group=variable,shape = variable
   labs(x="Industry") +
    scale_y_continuous("RCA",limits=c(0.8,1.2))+
   coord_cartesian( )+
-  theme_bw() + 
+  theme_minimal() + 
   theme( legend.title=element_blank(),legend.position = "bottom", # legend location in graph
          panel.grid.minor = element_blank(),
          axis.title=element_text( size="10"),
@@ -433,7 +441,7 @@ brewer<-c('#e41a1c','#377eb8','#4daf4a','#984ea3','#ff7f00','#ffff33')
 
 
 colors2<-list(c("#e41a1c","#377eb8"),c("#4daf4a","#984ea3"),
-              c("#377eb8","#e41a1c"),c("#984ea3","#4daf4a"))
+              c("#e41a1c","#377eb8"),c("#984ea3","#4daf4a"))
 
 # dat.wiod.bel.deu <- z.wide.exgr.fddva.dva.wiod%>%dplyr::select(.,IND,DViX_Fsr_BEL,EXGR_BEL,DViX_Fsr_DEU,EXGR_DEU)%>%mutate(.,ratio_exgr_bel_deu=EXGR_BEL/EXGR_DEU, ratio_fddva_bel_deu=DViX_Fsr_BEL/DViX_Fsr_DEU) %>%dplyr::select(.,IND,ratio_exgr_bel_deu,ratio_fddva_bel_deu) %>%gather( ., Variable,VAX,-IND)
 # dat.wiod.bel.deu$IND<-gsub("t","-",dat.wiod.bel.deu$IND)
@@ -476,17 +484,21 @@ list.of.plots<-pmap(list(df=list.of.df,title=list.of.titles,shape.val=list.of.sh
           coord_cartesian(ylim = c(0.8, 1.2))+
           geom_hline(yintercept=1)+
           labs(x="Sector",y="RCA",title=title)+
-          theme_bw() +   
+          theme_minimal() +   
           scale_shape_manual(name = "", values=shape.val)+
           scale_linetype_manual("", values=linetype.vals)+
         # scale_color_brewer(name="",palette = "Dark2") +
          scale_color_manual(name = "",values=color)+
           scale_y_continuous(breaks=c(seq(from=0.8,to=1.2,by=0.05)))+
           theme(plot.title = element_text(hjust=0.5,vjust=0.5),
-            legend.title=element_blank(), legend.position = "bottom", # legend location in graph
-                panel.grid.minor = element_blank(),
+         legend.position = "bottom", # legend location in graph
+                  legend.background = element_blank(),axis.title.x = element_blank(),
+             text = element_text(family = "Georgia",size=12),
+              panel.grid.major.x = element_blank(),
+              panel.grid.minor = element_blank(),
+              legend.title = element_blank(),
                 axis.title=element_text( size="10"),
-                axis.text.x=element_text(angle = 90, size=10))
+                axis.text.x=element_text(angle = 90, size=12))
           )})
 ```
 ```{r cor rca wiod, cache=T, warning=F,message=F,echo=F,cache.lazy=FALSE}
@@ -806,12 +818,13 @@ ggplot(kendall_exgr_bvax_wiod, aes(x=reorder(COU,-kendall), y=kendall,fill=above
  # scale_y_continuous(breaks=c(seq(0, 1,0.1)),minor_breaks=c(seq(0.05, 1,0.1))) +
   coord_cartesian(ylim = c(0.5, 1.0))+
   ggtitle(expression(atop("Association of structural RCA EXGR and BVAX")))+
-  theme_bw()+
+  theme_minimal()+
   theme( plot.title = element_text(hjust=0.5,vjust=0.5),
          legend.position = "none", # legend location in graph
-         #panel.grid.minor = element_blank(),
+         panel.grid.minor = element_blank(),
+         text = element_text(family = "Georgia",size=12),
          axis.title=element_text( size="11"),
-         axis.text.x=element_text(angle = 90, size=10))+
+         axis.text.x=element_text(angle = 90, size=12))+
   geom_hline(yintercept=0.94)+
 annotate("text",x=39,y=0.92,label="avg.")
 ```
@@ -835,7 +848,7 @@ In terms of EXGR Belgium has a CA relatively to Germany in the same sectors exce
 ```{r Country pair RCA: EXGR and FVAT RCA, echo=FALSE, fig.align='center', fig.cap='Country pair RCA: EXGR and FVAT RCA'}
 p.3.2.1<-list.of.plots[[1]]$plot
 p.3.2.2<-list.of.plots[[2]]$plot
-grid.arrange(p.3.2.1,p.3.2.2,name="Country pair RCA: EXGR and FVAT RCA",ncol=2)
+grid.arrange(p.3.2.1,p.3.2.2,ncol=2)
 ```
 
 Figure 2.4 shows the strength of association between the RCA rankings constructed on the basis of FVAT and on the basis of EXGR.
@@ -876,12 +889,12 @@ p.kendall.exgr.fvax<-ggplot(plot.wiod.RCA.EXGR.FVAX.df, aes(x=reorder(COU,-kenda
               legend.position = c(.1, 1.075),
               legend.background = element_blank(),
               legend.direction="horizontal",
-              text = element_text(family = "Georgia"),
-              plot.title = element_text(size = 20, margin = margin(b = 10)),
+              text = element_text(family = "Georgia",size=12),
+              plot.title = element_text(size = 14, margin = margin(b = 10)),
               plot.subtitle = element_text(size = 10, color = "darkslategrey", margin = margin(b = 25)),
               plot.caption = element_text(size = 8, margin = margin(t = 10), color = "grey70", hjust = 0),
-        axis.text.x=element_text(angle = 90, size=11))+
-  # theme_bw()+
+        axis.text.x=element_text(angle = 90, size=12))+
+  # theme_minimal()+
   # theme(legend.position = "bottom", # legend location in graph
   #        panel.grid.minor = element_blank(),
   #        axis.title=element_text( size="11"),
@@ -900,7 +913,7 @@ levels(plot.wiod.RCA.EXGR.FVAX.df$spear.cat3)<-map_chr(seq(1,3),.f=function(n){p
 
 p.spear.exgr.fvax<-ggplot(plot.wiod.RCA.EXGR.FVAX.df, aes(x=reorder(COU,-spearman), y=spearman,fill=spear.cat3)) + 
   geom_bar(stat="identity", position="dodge", color="black") +
-  theme_bw()+
+  theme_minimal()+
   scale_fill_manual(name=expression(rho),values=c(  "#f0f0f0","#bdbdbd","#636363"))+
   coord_cartesian(ylim=c(0,1.01))+
   scale_y_continuous(breaks=c(seq(0,1,0.1)))+
@@ -915,10 +928,10 @@ p.spear.exgr.fvax<-ggplot(plot.wiod.RCA.EXGR.FVAX.df, aes(x=reorder(COU,-spearma
               legend.position = c(.1, 1.075),
               legend.background = element_blank(),
               legend.direction="horizontal",
-              text = element_text(family = "Georgia"),
-              plot.title = element_text(size = 20, margin = margin(b = 10)),
-              plot.subtitle = element_text(size = 10, color = "darkslategrey", margin = margin(b = 25)),
-              plot.caption = element_text(size = 8, margin = margin(t = 10), color = "grey70", hjust = 0),
+              text = element_text(family = "Georgia",size=12),
+              plot.title = element_text(size = 14, margin = margin(b = 10)),
+              plot.subtitle = element_text(size = 12, color = "darkslategrey", margin = margin(b = 25)),
+              plot.caption = element_text(size = 10, margin = margin(t = 10), color = "grey70", hjust = 0),
         axis.text.x=element_text(angle = 90, size=11))+
  # # theme( plot.title = element_text(hjust=0.5,vjust=0.5),
  #         legend.position = "bottom", # legend location in graph
@@ -1460,10 +1473,10 @@ p.wiod.tiva.fvax.exgr.gdp.sp<-ggplot(p.wiod.1, aes(x=GDP.per.capita.2005/1000, y
               legend.position = c(.1, 1.075),
               legend.background = element_blank(),
               legend.direction="horizontal",
-              text = element_text(family = "Georgia"),
-              plot.title = element_text(size = 20, margin = margin(b = 10)),
-              plot.subtitle = element_text(size = 10, color = "darkslategrey", margin = margin(b = 25)),
-              plot.caption = element_text(size = 8, margin = margin(t = 10), color = "grey70", hjust = 0))
+              text = element_text(family = "Georgia",size=12),
+              plot.title = element_text(size = 14, margin = margin(b = 10)),
+              plot.subtitle = element_text(size = 12, color = "darkslategrey", margin = margin(b = 25)),
+              plot.caption = element_text(size = 10, margin = margin(t = 10), color = "grey70", hjust = 0))
   #  annotate("text", x = 55, y = 0.88, label = lm_eqn(lm(spearman.va.exgr ~ GDP.per.capita.2005, plot)),colour="black", size = 4, parse=TRUE)+
   # theme( legend.position = "none", # legend location in graph
   #        panel.grid.minor = element_blank(),
@@ -1481,7 +1494,7 @@ p.wiod.tiva.fvax.exgr.gdp.kend<-ggplot(p.wiod.1, aes(x=GDP.per.capita.2005/1000,
   scale_y_continuous( breaks=c(seq(0.3,1,0.1) )) +
   labs(x="GDP per capita (constant thousand 2005 US $)",y=expression(paste("Kendall's ",tau)),title="")+
   theme_minimal()+
-  theme(axis.title = element_blank(),
+    theme(axis.title = element_blank(),
               panel.grid.major.x = element_blank(),
               panel.grid.minor = element_blank(),
               legend.title = element_blank(),
@@ -1489,10 +1502,10 @@ p.wiod.tiva.fvax.exgr.gdp.kend<-ggplot(p.wiod.1, aes(x=GDP.per.capita.2005/1000,
               legend.position = c(.1, 1.075),
               legend.background = element_blank(),
               legend.direction="horizontal",
-              text = element_text(family = "Georgia"),
-              plot.title = element_text(size = 20, margin = margin(b = 10)),
-              plot.subtitle = element_text(size = 10, color = "darkslategrey", margin = margin(b = 25)),
-              plot.caption = element_text(size = 8, margin = margin(t = 10), color = "grey70", hjust = 0))
+              text = element_text(family = "Georgia",size=12),
+              plot.title = element_text(size = 14, margin = margin(b = 10)),
+              plot.subtitle = element_text(size = 12, color = "darkslategrey", margin = margin(b = 25)),
+              plot.caption = element_text(size = 10, margin = margin(t = 10), color = "grey70", hjust = 0))
     # theme( legend.position = "none", # legend location in graph
   #        panel.grid.minor = element_blank(),
   #        axis.title=element_text( size="11"),
@@ -1500,7 +1513,7 @@ p.wiod.tiva.fvax.exgr.gdp.kend<-ggplot(p.wiod.1, aes(x=GDP.per.capita.2005/1000,
 ```
 
 ```{r plot Strength of association and GDP per capita, fig.align='center', fig.cap='Strength of association and GDP per capita', echo=FALSE}
-grid.arrange(p.wiod.tiva.fvax.exgr.gdp.sp,p.wiod.tiva.fvax.exgr.gdp.kend,top="Strength of association and GDP per capita",ncol=2)
+grid.arrange(p.wiod.tiva.fvax.exgr.gdp.sp,p.wiod.tiva.fvax.exgr.gdp.kend,ncol=2)
 ```
 
 The figure shows a weak positive relationship between the strength of association and GDP per capita.
@@ -1594,14 +1607,15 @@ p.wi.ti.fvax.exgr.kend<-ggplot(stata.r.fvax.gdp.fvax.RCA$R.RCA$RCA.FVAX.kend, ae
   scale_x_continuous(breaks=c(seq(0,1,0.1)),minor_breaks=c(seq(0.05,1,.1))) +
   labs(y="",x="Kendall's tau")+
   guides(shape=guide_legend(title="Source",nrow=1))+#,colour=guide_legend(title="Difference"))+
-  theme_bw()+
+  theme_minimal()+
     theme_minimal()+
     theme(axis.title = element_blank(),
               panel.grid.major.x = element_blank(),
               panel.grid.minor = element_blank(),
           legend.background = element_blank(),
-          text = element_text(family = "Georgia"),
-          plot.title = element_text(size = 20, margin = margin(b = 10)))+
+          legend.position = "bottom",
+          text = element_text(family = "Georgia", size=12),
+          plot.title = element_text(size = 14, margin = margin(b = 10)))+
 
   # theme( legend.position = "bottom", # legend location in graph
   #       # panel.grid.minor = element_blank(),
@@ -1623,14 +1637,14 @@ clev.small.multiple<-ggplot(stata.r.fvax.gdp.fvax.RCA$R.RCA$RCA.FVAX.kend, aes(x
   scale_x_continuous(breaks=c(seq(0,1,0.1)),minor_breaks=c(seq(0.05,1,.1))) +
   labs(y="",x=expression(paste("Kendall's ",tau)))+
   guides(colour=guide_legend(title=expression(paste(tau["TiVA"]," -- ", tau["WiOD"])),nrow=2,byrow=T,order = 1,override.aes = list(shape = 15)),shape=guide_legend(title="",order = 2,label.vjust=0))+
-  theme_minimal()+
-    theme(#axis.title = element_blank(),
+ theme_minimal()+
+    theme(axis.title = element_blank(),
               panel.grid.major.x = element_blank(),
               panel.grid.minor = element_blank(),
           legend.background = element_blank(),
-          text = element_text(family = "Georgia"),
-          legend.position = "bottom",
-          plot.title = element_text(size = 20, margin = margin(b = 10)))+
+          text = element_text(family = "Georgia", size=12),
+           legend.position = "bottom",
+          plot.title = element_text(size = 14, margin = margin(b = 10)))+
   facet_grid(diff.categories~., labeller = as_labeller(facet_names),scales ="free_y",space="free_y")
   # theme( legend.position = "bottom", # legend location in graph
   #        # panel.grid.minor = element_blank(),
@@ -1659,13 +1673,13 @@ clev.spear<- ggplot(stata.r.fvax.gdp.fvax.RCA$R.RCA$RCA.FVAX.spear, aes(x=spearm
   labs(y="",x=expression(paste("Spearman's ",rho)))+
   guides(colour=guide_legend(title=expression(paste(rho["TiVA"]," -- ", rho["WiOD"])),nrow=2,byrow=T,order = 1,override.aes = list(shape = 15)),shape=guide_legend(title="",order = 2,label.vjust=0))+
     theme_minimal()+
-    theme(#axis.title = element_blank(),
+    theme(axis.title = element_blank(),
               panel.grid.major.x = element_blank(),
               panel.grid.minor = element_blank(),
-          legend.background = element_blank(),
-          text = element_text(family = "Georgia"),
           legend.position = "bottom",
-          plot.title = element_text(size = 20, margin = margin(b = 10)))+
+          legend.background = element_blank(),
+          text = element_text(family = "Georgia", size=12),
+          plot.title = element_text(size = 14, margin = margin(b = 10)))+
               # legend.title = element_blank(),
               # # legend.justification = c(0, 1), 
               # # legend.position = c(.0, 0.5),
@@ -1687,7 +1701,7 @@ clev.spear<- ggplot(stata.r.fvax.gdp.fvax.RCA$R.RCA$RCA.FVAX.spear, aes(x=spearm
 # The labels of each group refer to a categorization of the difference between the strength of association in the TiVA compared to the WiOD. I refer to an increase of $> 0.05$ as "Increased" and a decrease of $< -0.05$ as "Decreased". I refer to a small increase of $<0.05$ or a small decrease of $>-0.05$ as "Unchanged"
 ```
 ```{r fig 2-6 FVAT EXGR RCA WiOD and TiVA, echo=FALSE, fig.align='center', fig.cap='Strength of association: RCA - FVAT and EXGR - WiOD and TiVA', fig.height=10, fig.width=10, message=FALSE, warning=FALSE}
-grid.arrange(clev.small.multiple ,clev.spear,ncol=2,top='Strength of association: RCA - FVAT and EXGR - WiOD and TiVA' )
+grid.arrange(clev.small.multiple ,clev.spear,ncol=2 )
 ```
 
 
@@ -1717,9 +1731,9 @@ labs(y=expression(paste("Euclidian dist. Kendall's ",tau," -- WiOD and TiVA")), 
               panel.grid.major.x = element_blank(),
               panel.grid.minor = element_blank(),
           legend.background = element_blank(),
-          text = element_text(family = "Georgia"),
+          text = element_text(family = "Georgia",size=12),
           #legend.position = "bottom",
-          plot.title = element_text(size = 20, margin = margin(b = 10)),
+          plot.title = element_text(size = 14, margin = margin(b = 10)),
                legend.title = element_blank(),
               legend.justification = c(0, 1), 
                legend.position = c(.0, 0.5))
@@ -1738,14 +1752,14 @@ plot.wiod.t.gdp.euc<-ggplot(plot.data.2.7.2,aes(x=GDP.pc/1000, y=eucl.dist))+
   scale_y_continuous(breaks=c(-0.05,0.05,0.15,0.25,0.35,0.45))+
   ylab(expression(paste("Euclidian dist. Spearman's ", rho, " -- WiOD and TiVA" )))+    
   xlab("GDP per capita 2005 US Dollar")+
-  theme_minimal()+
-      theme(#axis.title = element_blank(),
+    theme_minimal()+
+  theme(#axis.title = element_blank(),
               panel.grid.major.x = element_blank(),
               panel.grid.minor = element_blank(),
           legend.background = element_blank(),
-          text = element_text(family = "Georgia"),
+          text = element_text(family = "Georgia",size=12),
           #legend.position = "bottom",
-          plot.title = element_text(size = 20, margin = margin(b = 10)),
+          plot.title = element_text(size = 14, margin = margin(b = 10)),
                legend.title = element_blank(),
               legend.justification = c(0, 1), 
                legend.position = c(.0, 0.5))
@@ -1758,7 +1772,7 @@ plot.wiod.t.gdp.euc<-ggplot(plot.data.2.7.2,aes(x=GDP.pc/1000, y=eucl.dist))+
 #dev.off
 ```
 ```{r fig 2-7 plot distnce strength of associations of RCA rankings, echo=FALSE, fig.align='center', fig.cap='Euclidian distance: Strength of associations of RCA rankings'}
-grid.arrange(plot.wiod.kend.gdp.eu,plot.wiod.t.gdp.euc, top="Distance strength of associations of RCA rankings -- WiOD and TiVA",ncol=2)
+grid.arrange(plot.wiod.kend.gdp.eu,plot.wiod.t.gdp.euc,ncol=2)
 ```
 
 ```{r bootstrap eucdist gdp lin R, message=FALSE, warning=FALSE, cache=T, include=FALSE}
@@ -2017,7 +2031,7 @@ z..in<-mean(eigen.res.final.df$in.eigen.cent)
 eigen.res.final.df<-eigen.res.final.df%>% mutate(.,out.eigen.cent.std=(out.eigen.cent*z..out)/(z.k.out*z.i.out),in.eigen.cent.std=(in.eigen.cent*z..in)/(z.k.in*z.i.in)) %>%dplyr::select(COU,ind,out.eigen.cent,out.eigen.cent.std,in.eigen.cent,in.eigen.cent.std)
 
 #################################### Load Ricardo CA ####################################
-setwd("/Users/sergej/Google Drive/Send_liza/Results")
+#setwd("/Users/sergej/Google Drive/Send_liza/Results")
 results<-read_dta("results_end_march_centr_ricardo.dta")
 nams<-names(results)
 nams<-nams[-c(2,3 )]
@@ -2159,7 +2173,7 @@ p.eigen.RCA.spear<-ggplot(results.spearman, aes(reorder(COU,-spearman),spearman,
   geom_hline(aes(yintercept=median(results.spearman$spearman)))+
   guides(fill=guide_legend(title=expression(rho)))+
   #geom_hline(aes(yintercept= 0.71))+
-  # theme_bw()+
+  # theme_minimal()+
    theme_minimal()+
       theme(#axis.title.x = element_blank(),
               panel.grid.major.x = element_blank(),
@@ -2211,9 +2225,9 @@ p.kend.RCA.eigen<-ggplot(results.kendall, aes(reorder(COU,-kendall),kendall, fil
               panel.grid.major.x = element_blank(),
               panel.grid.minor = element_blank(),
           legend.background = element_blank(),
-          text = element_text(family = "Georgia"),
+          text = element_text(family = "Georgia",size=12),
           legend.position = "bottom",
-          plot.title = element_text(size = 20, margin = margin(b = 10)),
+          plot.title = element_text(size = 14, margin = margin(b = 10)),
                legend.title = element_blank(),
                  axis.text.x=element_text(angle = 90, size=10),
               legend.justification = c(0, 1))+ 
@@ -2259,18 +2273,21 @@ The weighted international trade network is the triplet of the set of countries,
 I use network theory for the following reason. 
 My focus is to study the importance of countries in the propagation of shocks. 
 The propagation of a shock occurs through economic interactions of countries or industries influencing each other.
-As [@acemoglu2012] note, shocks may propagate through the full set of countries or industries as a result of interactions among economic actors.
-The focus of network theory are relationships among nodes, thus their interactions, while taking into account the complete set of the effects of other nodes on these interactions <br>encite{de2014network].
+As @acemoglu2012 note, shocks may propagate through the full set of countries or industries as a result of interactions among economic actors.
+The focus of network theory are relationships among nodes, thus their interactions, while taking into account the complete set of the effects of other nodes on these interactions @de2014network.
 Thus using the framework of network theory allows us to study the propagation of shocks among countries while taking into account the complete set of relations among them. I conduct this study separately for total value-added in the world trade network as well for total sectoral value-added. 
 <br>
 Next, I define eigenvector centrality for the binary trade network. 
-Then I extend the definition of eigenvector centrality to the weighted international trade network.^[I follow the outline of [@bonacich2001evcent], who attribute the original exposition to [@bonacich1972].]
+Then I extend the definition of eigenvector centrality to the weighted international trade network.^[I follow the outline of @bonacich2001evcent, who attribute the original exposition to @bonacich1972.]
  <br>
-The centrality $c^e_{j'}$ of a node $j'$ is proportional to the weighted sum of the centrality of the nodes it is connected to. \begin{align} \lambda c^e_{j'} &= g_{1,j'} c^e_{1}+g_{2,j'} c^e_{2}+ \dots + g_{n,j'} c^e_{n} \end{align} where $\lambda$ denotes a proportionality constant. 
-The equation 3.1 may be restated in matrix notation as below. It is the general eigenvector equation and  it  has $n$ solutions for $n$ values of $\lambda$. 
+The centrality $c^e_{j'}$ of a node $j'$ is proportional to the weighted sum of the centrality of the nodes it is connected to. \begin{align} \lambda c^e_{j'} &= g_{1,j'} c^e_{1}+g_{2,j'} c^e_{2}+ \dots + g_{n,j'} c^e_{n} 
+(\#eq:centrality-general)
+\end{align} where $\lambda$ denotes a proportionality constant. 
+The equation \@ref(eq:centrality-general) may be restated in matrix notation as below. It is the general eigenvector equation and  it  has $n$ solutions for $n$ values of $\lambda$. 
 \begin{align}
 \label{eq:6}
 \boldsymbol{G}^T \boldsymbol{C}^e = \boldsymbol{C}^e  \boldsymbol{\lambda}
+(\#eq:centrality-general-matrix)
 \end{align}
 $\boldsymbol{G}^T$ denotes the transpose of the trade relationships matrix with $n \times n$ dimensions. The trade relationship matrix is row normalized so that each row adds up to 1.  $\boldsymbol{\lambda}$ denotes the diagonal matrix of eigenvalues and $\boldsymbol{C}^e$ denotes a $n \times n$ matrix, where each column is an eigenvector of the trade relationship matrix $\boldsymbol{G}$.
 <br>
@@ -2279,13 +2296,13 @@ Two important properties of eigenvector centrality follow from the Perron-Froben
 A row stochastic matrix denotes a matrix where the sum of each row is equal one.]
 Second, it implies that the left-hand eigenvector of the largest eigenvalue is positive for a non-negative row stochastic matrix.<br>
 I focus on the principal eigenvector corresponding to the largest eigenvalue as the measure of network centrality. It is this eigenvector to which the matrix of trade relationships converges when taken to the power of $n$. <br> 
-Accordingly, equation 3.2 simplifies to the following equation, where $\boldsymbol{c}^e$ denotes the principal eigenvector.
+Accordingly, equation \@ref(eq:centrality-general-matrix) simplifies to the following equation, where $\boldsymbol{c}^e$ denotes the principal eigenvector.
 \begin{align}
 \label{eq:17}
  \boldsymbol{G}^T \boldsymbol{c}^e&=	 \boldsymbol{c}^e \end{align}
  <br>
 I focus on eigenvector centrality as the theoretically sound choice to analyze the centrality of nodes in the propagation of shocks through the international trade network. I motivate the choice as follows. 
-First, [@acemoglu2012] showed that the unit eigenvector is a first-order characteristic of the importance of sectors in the propagation of shocks in a country's production network. 
+First, @acemoglu2012 showed that the unit eigenvector is a first-order characteristic of the importance of sectors in the propagation of shocks in a country's production network. 
 In particular, they showed that a shock to a sector with a higher eigenvector centrality has larger effects on total value-added.
  Second, the elements of the unit eigenvector measure how much a node contributes to the value of the matrix when an extra unit of value is generated [@spizzirri2011]. 
  <br>
@@ -2318,7 +2335,7 @@ Notably, China is the only country in this group which is not a high-income coun
 The importance of the USA as the most central economy is highlighted by the result that its eigenvector centrality is 1.3 times higher than the second most central economy, Germany. 
 The periphery group consists of the remaining countries. 
 This group includes nearly three quarters of the countries in the sample. <br>
-The result that the eigenvector-centrality on the basis of the international trade network with FVAT indicates a core-periphery structure extends a similar finding by [@de2014network] for the international trade network on the basis of gross exports in 2007. 
+The result that the eigenvector-centrality on the basis of the international trade network with FVAT indicates a core-periphery structure extends a similar finding by @de2014network for the international trade network on the basis of gross exports in 2007. 
 
 ```{r shock propagation countries, message=FALSE, warning=FALSE, cache=T, include=FALSE}
 exclude<-c("15T16","20","21T22","36T37","60T64","45","50T52","55","75T95")
@@ -2461,10 +2478,10 @@ p.7.4<-ggplot(upper7_4,aes(x=IND,y=rank, group=COU,color=COU,shape=COU))+
               legend.position = c(.45, 1.05),
               legend.background = element_blank(),
               legend.direction="horizontal",
-              text = element_text(family = "Georgia"),
-              plot.title = element_text(hjust = 0.5,size = 20, margin = margin(b = 10)),
-              plot.subtitle = element_text(size = 10, color = "darkslategrey", margin = margin(b = 25)),
-              plot.caption = element_text(size = 8, margin = margin(t = 10), color = "grey70", hjust = 0))
+              text = element_text(family = "Georgia",size=12),
+              plot.title = element_text(hjust = 0.5,size = 14, margin = margin(b = 10)),
+              plot.subtitle = element_text(size = 12, color = "darkslategrey", margin = margin(b = 25)),
+              plot.caption = element_text(size = 10, margin = margin(t = 10), color = "grey70", hjust = 0))
     # theme( plot.title = element_text(hjust=0.5,vjust=0.5),
   #        legend.position = "bottom", # legend location in graph
   #        panel.grid.minor = element_blank(),
@@ -2484,7 +2501,7 @@ p.7.3<-ggplot(upper7_3,aes(x=IND,y=rank, group=COU,color=COU,shape=COU))+
   scale_color_manual(values=col.up.7.2[5:7])+
   theme_minimal()+
   labs(y="Rank",x="IND", title="")+
-   theme(#axis.title = element_blank(),
+ theme(#axis.title = element_blank(),
               panel.grid.major.x = element_blank(),
               panel.grid.minor = element_blank(),
               legend.title = element_blank(),
@@ -2493,10 +2510,10 @@ p.7.3<-ggplot(upper7_3,aes(x=IND,y=rank, group=COU,color=COU,shape=COU))+
               legend.position = c(.45, 1.05),
               legend.background = element_blank(),
               legend.direction="horizontal",
-              text = element_text(family = "Georgia"),
-              plot.title = element_text(hjust = 0.5,size = 20, margin = margin(b = 10)),
-              plot.subtitle = element_text(size = 10, color = "darkslategrey", margin = margin(b = 25)),
-              plot.caption = element_text(size = 8, margin = margin(t = 10), color = "grey70", hjust = 0))
+              text = element_text(family = "Georgia",size=12),
+              plot.title = element_text(hjust = 0.5,size = 14, margin = margin(b = 10)),
+              plot.subtitle = element_text(size = 12, color = "darkslategrey", margin = margin(b = 25)),
+              plot.caption = element_text(size = 10, margin = margin(t = 10), color = "grey70", hjust = 0))
      
   
 #dev.off()
@@ -2547,26 +2564,27 @@ tiva.2005.agg.cou.par<-tiva.2005.sub.final %>% filter(.,VAR%in%c("FFD_DVA")) %>%
  p.1.out.eigen.cou.par<- ggplot(eigen.res.cou.par.tb, aes(reorder(COU, -out.eigen.cent),out.eigen.cent,fill=cor.pres)) +
    geom_bar(stat="identity")+
    # geom_point(aes(color=cor.pres))+ 
-   labs(x="",y="",title="Out eigenvector centrality",subtitle ="")+
+   labs(x="",y="Out eigenvector centrality",title="")+
    scale_fill_manual(values=c("#999999","#000000"))+
     #scale_fill_brewer(type="seq",palette =6)+
    # scale_color_brewer()+
+   coord_cartesian(ylim=c(0,0.7))+
    scale_x_discrete( expand = c(0.00, 0.00))+
-    scale_y_continuous(breaks=c(seq(0,1,.1)),minor_breaks=c(seq(0.05,1.0,.1)), expand = c(0.02, 0.00))+
+    scale_y_continuous(breaks=c(seq(0,0.6,0.1)),minor_breaks=c(seq(0.05,0.6,0.1)), expand = c(0.02, 0.00))+
     theme_minimal()+
   theme(axis.title.x = element_blank(),
               panel.grid.major.x = element_blank(),
               panel.grid.minor = element_blank(),
               legend.title = element_blank(),
-              legend.justification = c(0, 1), 
-              legend.position = c(.1, 1.075),
+              #legend.justification = c(0, 1), 
+              legend.position ="bottom",
               legend.background = element_blank(),
               legend.direction="horizontal",
-              text = element_text(family = "Georgia"),
-              plot.title = element_text(size = 20, margin = margin(b = 10)),
-              plot.subtitle = element_text(size = 10, color = "darkslategrey", margin = margin(b = 25)),
-              plot.caption = element_text(size = 8, margin = margin(t = 10), color = "grey70", hjust = 0),
-        axis.text.x=element_text(angle = 90, size=11))
+              text = element_text(family = "Georgia",size=12),
+              plot.title = element_text(size = 14, margin = margin(b = 10)),
+              plot.subtitle = element_text(size = 12, color = "darkslategrey", margin = margin(b = 25)),
+              plot.caption = element_text(size = 10, margin = margin(t = 10), color = "grey70", hjust = 0),
+        axis.text.x=element_text(angle = 90, size=12))
    guides(fill=guide_legend(title="")) #+
  #  coord_flip()
    #theme(  plot.title = element_text(hjust=0.5,vjust=0.5),legend.position = "bottom", # legend location in graph
@@ -2605,7 +2623,7 @@ Summing up figure 3.2 highlights that the rank positions of the core countries s
 The variability of the ranking of the countries at the sectoral level indicates that the centrality of countries may be linked to their ability to contribute to the international trade network specific to each sector.
 To test this hypothesis further, I compute the strength of association between the ranking of relative centrality and and the ranking of RCA in chapter 2.
 ```{r shock propagation, echo=FALSE, fig.align='center', fig.cap='Shock propagation: Seven highest ranked countries across industries', fig.width=12, message=FALSE, warning=FALSE}
-grid.arrange(p.7.4,p.7.3,nrow=1,ncol=2,top='Shock propagation: Seven highest ranked countries across industries')
+grid.arrange(p.7.4,p.7.3,nrow=1,ncol=2)
 ```
 I analyze the association between the ranking of relative network centrality and the ranking of structural RCA constructed on the basis of forward value-added trade.
 Specifically, I normalize weighted out-eigenvector centrality using the same approach as in the normalization of RCA rankings.^[
@@ -2625,7 +2643,7 @@ The strength of association is for most countries in a narrow range. The interqu
 For a number of countries the strength of association between the rankings is rather low. 
 Especially, the following countries are lower outliers: Belgium, Spain, Mexico, France, India and Indonesia. The countries are outliers based on the definition that their absolute deviation from the median is higher than 3 times the median absolute deviation.^[This outlier definition is based on [@Hampel].] 
 ```{r plot eigen RCA, echo=FALSE, fig.align='center', fig.cap='Strength of association between RCA and eigenvector centrality', fig.width=12, message=FALSE, warning=FALSE}
-grid.arrange(p.eigen.RCA.spear,p.kend.RCA.eigen,ncol=2,top='Strength of association between RCA and eigenvector centrality')
+grid.arrange(p.eigen.RCA.spear,p.kend.RCA.eigen,ncol=2)
 ```
 Concluding, I find that for most countries the ranking of relative network centrality maps into their pattern of RCA. 
 However, for a group of six countries I find that the pattern of relative network centrality does not map into their pattern of RCA. 
@@ -2661,9 +2679,7 @@ The research of this thesis may open an avenue for further theoretical and empir
 First, future research may provide a theoretical underpinning for the mapping of the ranking of relative network centrality into the pattern of RCA. 
 Second, future empirical research may analyze whether the ranking of network centrality maps into the ranking of comparative advantage according to Heckscher-Ohlin. 
 
-<!--chapter:end:04_thesis_ch4.Rmd-->
 
-`r if (knitr:::is_html_output()) '# References {-}'`
 
 <!--chapter:end:05_thesis_references.rmd-->
 
@@ -2681,7 +2697,7 @@ Thus, the exogeneity condition requires for the three specifications that the in
 @[costinot] state two reasons why the condition may be violated.
 First, the condition may be violated because of a simultaneity bias. 
 An example for a simultaneity bias is agglomeration effects. ^[A relevant agglomeration effect in our context would be a positive spillover from the decision of one firm to export into a certain market to the decision of second firm to export to this destination [@bernard2004].]
-The sign of the simultaneity bias is apriori ambiguous @costinot}. <br>
+The sign of the simultaneity bias is apriori ambiguous @costinot. <br>
 Second, the exogeneity condition may be violated due to a measurement error.
 A measurement error of the international price data would downward bias the estimate of $\theta$ under the condition that the measurement error is correlated with the true underlying variable [@greene,p.85].<br>
 I use an IV estimation strategy to address the two outlined problems. 
@@ -2704,21 +2720,22 @@ I combined the additional data sources with the value-added and gross export dat
 In the cases in which the international price data is more disaggregated, I used a weighted average. 
 Specifically, to merge two sectors I assigned to each sector a weight equal to the share of the sectors value-added output relative to the sum of value-added output of the two sectors. %Hence, I aggregated several prices from the service sectors using a weighted average.
 
-### Missing data imputation}
-[@schafer1998multiple] note that the following three concerns arise due to missing data: (1) efficiency losses, (2) complications in data handling and data analysis, (3) bias due to differences between the observed and unobserved data.
+### Missing data imputation
+
+@schafer1998multiple note that the following three concerns arise due to missing data: (1) efficiency losses, (2) complications in data handling and data analysis, (3) bias due to differences between the observed and unobserved data.
 For the estimation of $\theta$ potential problems may arise due missing data because  data on  R \& D expenditures is not available for some industries..
 In particular, the missing data may cause a loss of efficiency in the first stage of the IV estimation, which would reduce the strength of the first stage association between R&amp;D and the inverse of producer prices and hence upward bias the estimates of $\theta$. <br>
 
-Multiple imputation is a Bayesian technique to impute missing data by simulated draws from the posterior predictive distribution. ^[It was initially proposed in [@rubin1978] for non-response in surveys, and its statistical properties were developed in  [@Rubin1987].]<br>
- In the following, I outline multiple imputation based on  [@Little:2002a, pp. 209-211].<br>
+Multiple imputation is a Bayesian technique to impute missing data by simulated draws from the posterior predictive distribution. ^[It was initially proposed in [@rubin1978] for non-response in surveys, and its statistical properties were developed in  @Rubin1987.]<br>
+ In the following, I outline multiple imputation based on  @Little:2002a, pp. 209-211.<br>
 Missing data techniques assume that the missing observations of a variable are random variables with a statistical distribution.
 Multiple imputation as other missing data imputation techniques assume that the probability of a missing observation depends only on the observed data and not on the missing data. <br>
 The idea of multiple imputation is to relate the observed posterior distribution to the complete-data posterior distribution, which would be observed in the absence of missing data.
-The main result of [@Rubin1987] is that the posterior distribution of a statistical quantity may be simulated by first imputing the missing observations with repeated draws from the predictive posterior distribution of the missing data given the observed data and then drawing the statistical quantity from its complete data posterior distribution. ^[The posterior distribution is in Bayesian interference obtained by dividing the product of the assumed prior distribution and the likelihood by a normalizing constant. The posterior predictive distribution describes the predicted value averaged over the posterior distribution.]
+The main result of @Rubin1987 is that the posterior distribution of a statistical quantity may be simulated by first imputing the missing observations with repeated draws from the predictive posterior distribution of the missing data given the observed data and then drawing the statistical quantity from its complete data posterior distribution. ^[The posterior distribution is in Bayesian interference obtained by dividing the product of the assumed prior distribution and the likelihood by a normalizing constant. The posterior predictive distribution describes the predicted value averaged over the posterior distribution.]
 <br>
 Multiple imputation produces valid interference from a frequentist perspective [@Little:2002a,p.90]. <br>
 The choice of multiple imputation is based on the following reasons.
-First, techniques ignoring the missing observations such as complete case analysis or case-wise deletion, require a stronger assumption about the missing data.  Specifically, they require that the missing data is a random subset of all observations @bhaskaran}.
+First, techniques ignoring the missing observations such as complete case analysis or case-wise deletion, require a stronger assumption about the missing data.  Specifically, they require that the missing data is a random subset of all observations @bhaskaran.
 Multiple imputation offers a simple and general approach and it correctly accounts for the uncertainty induced by missing observations [@schafer1998multiple].
  <br>
 After the imputation complete-data methods can be used on the imputed data-sets and the results may be combined using Rubin's rules [@Rubin1987].
@@ -2727,7 +2744,7 @@ The associated variance is the combination of the variance estimates within each
  $T_m=\bar{V_m}+ ({m+1}/m)*B_m \, \text{where } B_m=1/{m-1}*\sum_{l=1}^m (Q_l-Q_m)^2 \, \text{and} \,\bar{V_m}=1/m * \sum_{l=1}^m V_l $.
  <br>
 To overcome possible shortcomings of multiple imputation, I combine it with predictive mean matching (PMM).
-PMM  is a nearest neighbour matching technique.  Its use in the context of multiple imputation is attributed to [@Rubin_matching] and [@little86]. 
+PMM  is a nearest neighbour matching technique.  Its use in the context of multiple imputation is attributed to @Rubin_matching and @little86. 
 Unlike multiple imputation, which is based on a normality assumption, PMM imputes missing data with random draws from the closest observations in the observed data. 
 As a consequence, it is well suited to impute skewed variables [@White_MI_chained]. This approach is relevant to our imputation as R\&D expenditure is highly skewed.
 
@@ -2741,7 +2758,7 @@ I impute both variables using the country and sector fixed effects, to account f
 Similarly, @costinot} imputed the log of R&amp;D expenditures with the predicted values from a regression on country and sector fixed effects. 
 <br> 
 I impute the outcome variable based on the following arguments. First, @little1992regression} argued that if both the regressors and the outcome variable have missing values, the latter may provide additional information to impute the regressors. 
-Second, the simulation study of [@Moons:2006a] found that the results of multiple imputation of covariates with missing observations were biased if the outcome variable was not used in the imputation.
+Second, the simulation study of @Moons:2006a found that the results of multiple imputation of covariates with missing observations were biased if the outcome variable was not used in the imputation.
 
 \subsection{Results:  Second stage}
 Table 1  presents the cross-sectional results of the estimates of $\theta$ for the year 2005. Table 1 is divided into three subtables for each of the three dependent variables, gross exports, backward value-added and forward value-added. 
@@ -2982,3 +2999,6 @@ kable(table.2)
 
 <!--chapter:end:06_thesis_appendix.Rmd-->
 
+<!--chapter:end:04_thesis_ch4.Rmd-->
+
+`r if (knitr:::is_html_output()) '# References {-}'`
